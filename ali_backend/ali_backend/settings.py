@@ -91,8 +91,12 @@ WSGI_APPLICATION = 'ali_backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',  # Especifica que usarás MySQL
+        'NAME': 'psicoorientacion_db',  # Nombre de la base de datos
+        'USER': 'root',  # Usuario de MySQL (cámbialo si tienes otro)
+        'PASSWORD': 'Volcano21!',  # Pon la contraseña de MySQL
+        'HOST': 'localhost',  # O la IP del servidor si está en otro lado
+        'PORT': '3306',  # Puerto por defecto de MySQL
     }
 }
 
