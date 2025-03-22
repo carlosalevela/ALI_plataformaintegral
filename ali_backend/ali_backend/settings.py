@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'Usuario',
     'rest_framework',
     'rest_framework_simplejwt',
+    'test_grado9'
 ]
 AUTH_USER_MODEL = 'Usuario.Usuario'
 
