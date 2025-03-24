@@ -41,7 +41,9 @@ INSTALLED_APPS = [
     'Usuario',
     'rest_framework',
     'rest_framework_simplejwt',
-    'test_grado9'
+    'test_grado9',
+    'test_grado_10_11',
+    'django_extensions'
 ]
 AUTH_USER_MODEL = 'Usuario.Usuario'
 
