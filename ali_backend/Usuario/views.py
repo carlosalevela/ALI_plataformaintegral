@@ -24,18 +24,18 @@ class LoginAPI(TokenObtainPairView):
 
 
 class UsuarioAPI(APIView):
-    permission_classes = [permissions.IsAuthenticated]  # 🔒 Requiere autenticación
+    permission_classes = [permissions.IsAuthenticated]  # Requiere autenticación
 
-    # 📌 OBTENER TODOS LOS USUARIOS (Solo Admins)
-    def get(self, request, *args, **kwargs):
-        if request.user.rol != "admin":
-            return Response({"error": "Acceso denegado"}, status=status.HTTP_403_FORBIDDEN)
+    # OBTENER TODOS LOS USUARIOS (Solo Admins)
+    def get(self, request):
+        if not request.user.is_authenticated or request.user.rol != "admin":
+            return Response({"error": "No tienes permiso para ver esta lista"}, status=status.HTTP_403_FORBIDDEN)
 
         usuarios = Usuario.objects.all()
-        serializador = UsuarioSerializer(usuarios, many=True)
-        return Response(serializador.data, status=status.HTTP_200_OK)
+        serializer = UsuarioSerializer(usuarios, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-    # 📌 REGISTRO DE USUARIOS (Estudiantes y Admins)
+    # REGISTRO DE USUARIOS (Estudiantes y Admins)
     permission_classes = [permissions.AllowAny]  # 🔓 Registro sin autenticación
     def post(self, request, *args, **kwargs):
         data = {
@@ -58,15 +58,15 @@ class UsuarioAPI(APIView):
 
 
 class UsuarioDetailAPI(APIView):
-    permission_classes = [IsAuthenticated]  # 🔒 Requiere autenticación
+    permission_classes = [IsAuthenticated]  # Requiere autenticación
 
-    # 📌 OBTENER DETALLES DE UN USUARIO POR ID
+    # OBTENER DETALLES DE UN USUARIO POR ID
     def get(self, request, pkid, *args, **kwargs):
         usuario = get_object_or_404(Usuario, id=pkid)
         serializador = UsuarioSerializer(usuario)
         return Response(serializador.data, status=status.HTTP_200_OK)
 
-    # 📌 EDITAR UN USUARIO (Solo Admins o el Propietario)
+    # EDITAR UN USUARIO (Solo Admins o el Propietario)
     def put(self, request, pkid):
         usuario = get_object_or_404(Usuario, id=pkid)
 
@@ -77,9 +77,10 @@ class UsuarioDetailAPI(APIView):
         if serializador.is_valid():
             serializador.save()
             return Response(serializador.data, status=status.HTTP_200_OK)
+        print("Errores de validación:", serializador.errors)
         return Response(serializador.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # 📌 ELIMINAR UN USUARIO (Solo Admins)
+    # ELIMINAR UN USUARIO (Solo Admins)
     def delete(self, request, pkid):
         usuario = get_object_or_404(Usuario, id=pkid)
 
