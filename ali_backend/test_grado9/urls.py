@@ -6,5 +6,5 @@ router = DefaultRouter()
 router.register(r'', TestGrado9ViewSet, basename='test_grado9')
 
 urlpatterns = [
-    path('', include(router.urls)),  # Incluye las rutas generadas por el router
+    path('', include(router.urls)),  
 ]

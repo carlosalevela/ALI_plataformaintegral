@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'Usuario',
     'rest_framework',
+    'rest_framework.authtoken',
     'rest_framework_simplejwt',
     'test_grado9',
     'test_grado_10_11',
@@ -49,14 +50,18 @@ AUTH_USER_MODEL = 'Usuario.Usuario'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # Usar JWT para autenticación
     ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # Requiere autenticación para acceder
+    ]
 }
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

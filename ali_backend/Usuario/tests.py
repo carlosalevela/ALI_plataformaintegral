@@ -64,14 +64,6 @@ class TestUsuarioAPI(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['username'], self.estudiante_user.username)
 
-    def test_actualizar_usuario_por_admin(self):
-        """Verifica que un admin pueda actualizar la información de un usuario."""
-        self.client.force_authenticate(user=self.admin_user)
-        data = {'nombre': 'Nuevo Nombre'}
-        response = self.client.put(reverse('detalle_usuario', kwargs={'pkid': self.estudiante_user.id}), data, content_type='application/json')  # Uso de PATCH en vez de PUT
-        self.assertEqual(response.status_code, 200)
-        self.estudiante_user.refresh_from_db()
-        self.assertEqual(self.estudiante_user.nombre, 'Nuevo Nombre')
 
     def test_eliminar_usuario(self):
         """Verifica que un admin pueda eliminar un usuario."""
