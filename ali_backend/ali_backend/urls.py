@@ -22,9 +22,9 @@ from test_grado_10_11 import urls as urls_tests_grado10_11
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/usuarios/', include(urls_usuarios)),
-    path('api/tests-grado9/', include(urls_tests_grado9)),
-    path('api/tests-grado10-11/', include(urls_tests_grado10_11)),  
+    path('Alipsicoorientadora/usuarios/', include(urls_usuarios)),
+    path('Alipsicoorientadora/tests-grado9/', include(urls_tests_grado9)),
+    path('Alipsicoorientadora/tests-grado10-11/', include(urls_tests_grado10_11)),  
 
 
 ]
