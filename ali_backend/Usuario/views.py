@@ -42,7 +42,7 @@ class UsuarioAPI(APIView):
             'username': request.data.get('username'),
             'nombre': request.data.get('nombre'),
             'email': request.data.get('email'),
-            'rol': request.data.get('rol', 'estudiante'),
+            'rol': 'estudiante',
             'grado': request.data.get('grado'),
             'edad': request.data.get('edad'),
             'password': request.data.get('password'),
