@@ -22,12 +22,20 @@ class ApiService {
       final data = jsonDecode(response.body);
       final decoded = _decodeJWT(data['access']);
       final rol = decoded['rol'];
+      final nombre = decoded['nombre'];
+      final grado = decoded['grado'].toString();
+      final edad = decoded['edad'].toString();
+      final userId = decoded['user_id'];
 
-      // Guardar tokens y rol
+      // Guardar tokens y datos del usuario
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('access_token', data['access']);
       await prefs.setString('refresh_token', data['refresh']);
       await prefs.setString('rol', rol); 
+      await prefs.setString('nombre', nombre);
+      await prefs.setString('grado', grado);
+      await prefs.setString('edad', edad);
+      await prefs.setInt('user_id', userId);
 
       return {'success': true, 'role': rol};
     } else {
@@ -116,5 +124,36 @@ class ApiService {
     final payload = base64Url.normalize(parts[1]);
     final decoded = utf8.decode(base64Url.decode(payload));
     return jsonDecode(decoded);
+  }
+
+  // Enviar respuestas al test de grado 9
+  Future<Map<String, dynamic>> enviarTestGrado9(Map<String, dynamic> respuestas) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
+    final userId = prefs.getInt('user_id');
+
+    final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado9/');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'usuario': userId,
+        'respuestas': respuestas
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      return {'success': true, 'resultado': data};
+    } else {
+      return {
+        'success': false,
+        'message': 'Error en el test: ${response.body}'
+      };
+    }
   }
 }

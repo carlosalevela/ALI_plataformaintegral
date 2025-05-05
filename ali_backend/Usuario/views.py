@@ -16,7 +16,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        token['rol'] = user.rol  # Agregar campo extra al token
+        token['rol'] = user.rol
+        token['nombre'] = user.nombre
+        token['grado'] = user.grado
+        token['edad'] = user.edad
+        token['user_id'] = user.id
         return token
 
 class LoginAPI(TokenObtainPairView):

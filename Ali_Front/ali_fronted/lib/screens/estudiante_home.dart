@@ -34,6 +34,7 @@ class _EstudianteHomeState extends State<EstudianteHome> with SingleTickerProvid
     final g = int.tryParse(grado) ?? 0;
     if (g == 10) return 'Test Técnico';
     if (g == 11) return 'Test Tecnológico';
+    if (g == 9) return 'Test Grado 9';
     return 'Test Vocacional';
   }
 
@@ -124,7 +125,6 @@ class _EstudianteHomeState extends State<EstudianteHome> with SingleTickerProvid
                     ),
                   ),
                   const SizedBox(height: 20),
-
                   const Text('📸 Galería (Próximamente):', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Container(
@@ -139,8 +139,24 @@ class _EstudianteHomeState extends State<EstudianteHome> with SingleTickerProvid
                         style: TextStyle(color: Colors.black54)),
                     ),
                   ),
-
                   const SizedBox(height: 30),
+
+                  if (grado == '9')
+                    Center(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/test_grado9');
+                        },
+                        icon: const Icon(Icons.quiz),
+                        label: const Text('Realizar Test Grado 9'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        ),
+                      ),
+                    ),
+
                   Center(
                     child: ElevatedButton.icon(
                       onPressed: () {

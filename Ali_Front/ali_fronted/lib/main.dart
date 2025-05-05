@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
-
-// Estas son pantallas de ejemplo que puedes crear luego
 import 'screens/admin_dashboard.dart';
 import 'screens/estudiante_home.dart';
+import 'screens/test_grado9_screen.dart'; // ✅ Importación añadida
 
 void main() {
   runApp(const MyApp());
@@ -27,6 +26,7 @@ class MyApp extends StatelessWidget {
         '/register': (context) => const RegisterScreen(),
         '/admin': (context) => const AdminDashboard(),
         '/estudiante': (context) => const EstudianteHome(),
+        '/test_grado9': (context) => TestGrado9Page(), // ✅ Ruta añadida
       },
       debugShowCheckedModeBanner: false,
     );
