@@ -76,7 +76,7 @@ class _TestGrado9PageState extends State<TestGrado9Page> {
         _respuestas.addAll(Map<String, String>.from(jsonDecode(saved)));
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('🔄 Se restauró tu progreso anterior.')),
+        const SnackBar(content: Text('🔄 Se restauró tu progreso anterior.')),
       );
     }
   }
@@ -87,9 +87,9 @@ class _TestGrado9PageState extends State<TestGrado9Page> {
   }
 
   Future<void> enviarTest() async {
-    if (_respuestas.length < 40) {
+    if (_respuestas.length < preguntas.length) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Por favor responde todas las preguntas.')),
+        const SnackBar(content: Text('Por favor responde todas las preguntas.')),
       );
       return;
     }
@@ -114,38 +114,107 @@ class _TestGrado9PageState extends State<TestGrado9Page> {
 
     if (response.statusCode == 201 || response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      await prefs.remove('test_grado9_respuestas'); // limpiar progreso
+      await prefs.remove('test_grado9_respuestas');
+
+      final total = _respuestas.length;
+      final contador = {'A': 0, 'B': 0, 'C': 0, 'D': 0};
+
+      _respuestas.values.forEach((v) {
+        if (contador.containsKey(v)) contador[v] = contador[v]! + 1;
+      });
+
+      final resultado = data['resultado'].toString();
+      IconData icono;
+      Color color;
+
+      if (resultado.toLowerCase().contains('tecnológico')) {
+        icono = Icons.memory;
+        color = Colors.blueGrey;
+      } else if (resultado.toLowerCase().contains('técnico')) {
+        icono = Icons.engineering;
+        color = Colors.indigo;
+      } else if (resultado.toLowerCase().contains('artístico')) {
+        icono = Icons.palette;
+        color = Colors.deepPurple;
+      } else if (resultado.toLowerCase().contains('empresarial')) {
+        icono = Icons.business_center;
+        color = Colors.teal;
+      } else {
+        icono = Icons.lightbulb;
+        color = Colors.blueGrey;
+      }
+
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          title: Text('Resultado'),
-          content: Text('Modalidad sugerida: ${data['resultado']}'),
-          actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text('OK'))],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('🎯 Resultado del Test'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 500),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.05),
+                  border: Border.all(color: color, width: 1.5),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Icon(icono, color: color, size: 36),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        '💼 Modalidad sugerida:\n$resultado',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('Me gusta: ${(contador['A']! * 100 / total).toStringAsFixed(1)}%'),
+              Text('Me interesa: ${(contador['B']! * 100 / total).toStringAsFixed(1)}%'),
+              Text('No me gusta: ${(contador['C']! * 100 / total).toStringAsFixed(1)}%'),
+              Text('No me interesa: ${(contador['D']! * 100 / total).toStringAsFixed(1)}%'),
+              const SizedBox(height: 16),
+              const Text('🎉 ¡Gracias por completar el test!', style: TextStyle(fontStyle: FontStyle.italic)),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
+            )
+          ],
         ),
       );
     } else {
-      print('Error: ${response.statusCode}');
-      print('Body: ${response.body}');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al enviar el test.')),
+        const SnackBar(content: Text('Error al enviar el test.')),
       );
     }
   }
 
-  Color _getColor(String key) {
+  IconData _getIcon(String key) {
     switch (key) {
-      case 'A': return Colors.green.shade300;
-      case 'B': return Colors.blue.shade300;
-      case 'C': return Colors.orange.shade300;
-      case 'D': return Colors.red.shade300;
-      default: return Colors.grey;
+      case 'A': return Icons.thumb_up;
+      case 'B': return Icons.favorite;
+      case 'C': return Icons.thumb_down;
+      case 'D': return Icons.block;
+      default: return Icons.help;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Test Grado 9 - RIASEC')),
+      appBar: AppBar(title: const Text('Test Grado 9 - RIASEC')),
       body: Form(
         key: _formKey,
         child: ListView.builder(
@@ -153,32 +222,34 @@ class _TestGrado9PageState extends State<TestGrado9Page> {
           itemBuilder: (context, index) {
             final preguntaKey = 'pregunta_${index + 1}';
             return Card(
-              margin: EdgeInsets.all(8),
+              margin: const EdgeInsets.all(8),
+              elevation: 1,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('${index + 1}. ${preguntas[index]}',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    ...opciones.entries.map((entry) => Container(
-                          decoration: BoxDecoration(
-                            color: _getColor(entry.key),
-                            borderRadius: BorderRadius.circular(8),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 10),
+                    ...opciones.entries.map((entry) => RadioListTile<String>(
+                          title: Row(
+                            children: [
+                              Icon(_getIcon(entry.key), color: Colors.grey.shade700, size: 20),
+                              const SizedBox(width: 8),
+                              Text(entry.value,
+                                  style: const TextStyle(fontWeight: FontWeight.w500)),
+                            ],
                           ),
-                          margin: EdgeInsets.symmetric(vertical: 4),
-                          child: RadioListTile<String>(
-                            title: Text('${entry.key} - ${entry.value}',
-                                style: TextStyle(color: Colors.black)),
-                            value: entry.key,
-                            groupValue: _respuestas[preguntaKey],
-                            onChanged: (value) {
-                              setState(() {
-                                _respuestas[preguntaKey] = value!;
-                              });
-                              _guardarProgreso(); // guardar al cambiar
-                            },
-                          ),
+                          value: entry.key,
+                          groupValue: _respuestas[preguntaKey],
+                          onChanged: (value) {
+                            setState(() {
+                              _respuestas[preguntaKey] = value!;
+                            });
+                            _guardarProgreso();
+                          },
                         ))
                   ],
                 ),
@@ -188,7 +259,8 @@ class _TestGrado9PageState extends State<TestGrado9Page> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.send),
+        backgroundColor: Colors.teal,
+        child: const Icon(Icons.send),
         onPressed: enviarTest,
       ),
     );
