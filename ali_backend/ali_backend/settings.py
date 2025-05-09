@@ -105,7 +105,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',  # Especifica que usarás MySQL
         'NAME': 'psicoorientacion_db',  # Nombre de la base de datos
         'USER': 'root',  # Usuario de MySQL (cámbialo si tienes otro)
-        'PASSWORD': 'lina2328',  # Pon la contraseña de MySQL
+        'PASSWORD': 'Volcano21!',  # Pon la contraseña de MySQL
         'HOST': 'localhost',  # O la IP del servidor si está en otro lado
         'PORT': '3306',  # Puerto por defecto de MySQL
     }

@@ -11,6 +11,11 @@ class UsuarioSerializer(serializers.ModelSerializer):
             'password': {'write_only': True},  # No mostrar en respuestas
         }
 
+    def validate_grado(self, value):
+        if value not in [9, 10, 11]:
+            raise serializers.ValidationError("El grado debe ser 9, 10 o 11.")
+        return value
+
     def create(self, validated_data):
         """Crea un nuevo usuario y encripta la contraseña antes de guardarlo."""
         password = validated_data.pop('password')

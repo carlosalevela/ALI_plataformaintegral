@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -15,9 +16,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _username = TextEditingController();
   final TextEditingController _nombre = TextEditingController();
   final TextEditingController _email = TextEditingController();
-  final TextEditingController _grado = TextEditingController();
   final TextEditingController _edad = TextEditingController();
   final TextEditingController _password = TextEditingController();
+
+  final List<String> gradosDisponibles = ['9', '10', '11'];
+  String? _gradoSeleccionado;
 
   bool _isLoading = false;
   String? _message;
@@ -34,7 +37,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       "username": _username.text.trim(),
       "nombre": _nombre.text.trim(),
       "email": _email.text.trim(),
-      "grado": _grado.text.trim(),
+      "grado": _gradoSeleccionado,
       "edad": int.tryParse(_edad.text.trim()) ?? 0,
       "password": _password.text.trim(),
     });
@@ -44,12 +47,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     if (result['success']) {
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Registro exitoso. Inicia sesión.'),
+      backgroundColor: Colors.green,
+    ),
+  );
+  await Future.delayed(Duration(seconds: 2));
+  Navigator.pushReplacementNamed(context, '/');
+} else {
       setState(() {
-        _message = "Registro exitoso. Ahora puedes iniciar sesión.";
-      });
-    } else {
-      setState(() {
-        _message = "Error: ${result['message']}";
+        _message = "Error: \${result['message']}";
       });
     }
   }
@@ -109,25 +118,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       validator: (val) => val!.contains('@') ? null : 'Correo inválido',
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _grado,
+                    DropdownButtonFormField<String>(
                       decoration: const InputDecoration(
                         labelText: 'Grado',
                         prefixIcon: Icon(Icons.school),
                         border: OutlineInputBorder(),
                       ),
-                      validator: (val) => val!.isEmpty ? 'Requerido' : null,
+                      value: _gradoSeleccionado,
+                      items: gradosDisponibles.map((grado) {
+                        return DropdownMenuItem(
+                          value: grado,
+                          child: Text('Grado $grado'),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _gradoSeleccionado = value;
+                        });
+                      },
+                      validator: (val) => val == null ? 'Seleccione un grado' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _edad,
                       keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: const InputDecoration(
                         labelText: 'Edad',
                         prefixIcon: Icon(Icons.cake),
                         border: OutlineInputBorder(),
                       ),
-                      validator: (val) => val!.isEmpty ? 'Requerido' : null,
+                      validator: (val) {
+                        if (val == null || val.isEmpty) return 'Requerido';
+                        if (int.tryParse(val) == null) return 'Debe ser un número válido';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     TextFormField(

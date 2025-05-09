@@ -11,6 +11,7 @@ class TestGrado9Page extends StatefulWidget {
 class _TestGrado9PageState extends State<TestGrado9Page> {
   final _formKey = GlobalKey<FormState>();
   final Map<String, String> _respuestas = {};
+  int? _userId;
 
   final Map<String, String> opciones = {
     'A': 'Me gusta',
@@ -70,7 +71,8 @@ class _TestGrado9PageState extends State<TestGrado9Page> {
 
   void _cargarProgreso() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('test_grado9_respuestas');
+    _userId = prefs.getInt('user_id');
+    final saved = prefs.getString('test_grado9_respuestas_$_userId');
     if (saved != null) {
       setState(() {
         _respuestas.addAll(Map<String, String>.from(jsonDecode(saved)));
@@ -83,7 +85,12 @@ class _TestGrado9PageState extends State<TestGrado9Page> {
 
   Future<void> _guardarProgreso() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('test_grado9_respuestas', jsonEncode(_respuestas));
+    if (_userId != null) {
+      await prefs.setString(
+        'test_grado9_respuestas_$_userId',
+        jsonEncode(_respuestas),
+      );
+    }
   }
 
   Future<void> enviarTest() async {
@@ -96,7 +103,6 @@ class _TestGrado9PageState extends State<TestGrado9Page> {
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('access_token');
-    final userId = prefs.getInt('user_id');
 
     final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado9/');
 
@@ -107,14 +113,14 @@ class _TestGrado9PageState extends State<TestGrado9Page> {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode({
-        'usuario': userId,
+        'usuario': _userId,
         'respuestas': _respuestas
       }),
     );
 
     if (response.statusCode == 201 || response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      await prefs.remove('test_grado9_respuestas');
+      await prefs.remove('test_grado9_respuestas_$_userId');
 
       final total = _respuestas.length;
       final contador = {'A': 0, 'B': 0, 'C': 0, 'D': 0};
