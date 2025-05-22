@@ -5,9 +5,13 @@ from rest_framework.permissions import IsAuthenticated
 from .models import TestGrado9
 from .serializers import TestGrado9Serializer
 
-# Ruta al modelo entrenado (ajústala si está en otra parte)
-MODEL_PATH = "test_grado9/ml_model/test_grado9_model.pkl"
-model = joblib.load(MODEL_PATH)
+# Rutas a los modelos entrenados
+MODEL_RF_PATH = "test_grado9/ml_model/test_grado9_model.pkl"
+MODEL_KNN_PATH = "test_grado9/ml_model/modelo_knn.pkl"
+
+# Cargar modelos
+model_rf = joblib.load(MODEL_RF_PATH)
+model_knn = joblib.load(MODEL_KNN_PATH)
 
 class TestGrado9ViewSet(viewsets.ModelViewSet):
     """
@@ -52,10 +56,11 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
                 letra_a_valor[respuestas[f"pregunta_{i}"]] for i in range(1, 41)
             ]).reshape(1, -1)
 
-            # Predecir la modalidad
-            prediction = model.predict(input_data)
+            # Predecir con ambos modelos
+            prediction_rf = model_rf.predict(input_data)
+            prediction_knn = model_knn.predict(input_data)
 
-            # Mapear el valor numérico a nombre si es necesario
+            # Mapear valor numérico a modalidad
             modalidad_mapeo_inverso = {
                 1: "Industrial",
                 2: "Comercio",
@@ -63,12 +68,14 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
                 4: "Agropecuaria"
             }
 
-            # Asignar el resultado de la predicción al test
-            modalidad_predicha = modalidad_mapeo_inverso.get(int(prediction[0]), "Desconocido")
-            test_instance.resultado = modalidad_predicha
+            modalidad_rf = modalidad_mapeo_inverso.get(int(prediction_rf[0]), "Desconocido")
+            modalidad_knn = modalidad_mapeo_inverso.get(int(prediction_knn[0]), "Desconocido")
+
+            # Combinar resultados (puedes separar esto si deseas campos diferentes)
+            resultado_completo = f"RandomForest: {modalidad_rf} | KNN: {modalidad_knn}"
+            test_instance.resultado = resultado_completo
             test_instance.save()
 
         except Exception as e:
-            # Registrar cualquier error interno y devolver una respuesta apropiada
             test_instance.resultado = f"Error interno: {str(e)}"
             test_instance.save()
