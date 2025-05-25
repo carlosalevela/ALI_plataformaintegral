@@ -156,4 +156,36 @@ class ApiService {
       };
     }
   }
+
+  /// Enviar respuestas al test de grado 10 y 11
+  Future<Map<String, dynamic>> enviarTestGrado10y11(Map<String, String> respuestas) async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('access_token');
+  final userId = prefs.getInt('user_id');
+
+  final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado10-11/');
+
+  final response = await http.post(
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+    body: jsonEncode({
+      'usuario': userId,
+      'respuestas': respuestas,
+    }),
+  );
+
+  if (response.statusCode == 200 || response.statusCode == 201) {
+    final data = jsonDecode(response.body);
+    return {'success': true, 'resultado': data};
+  } else {
+    return {
+      'success': false,
+      'message': 'Error en el test: ${response.statusCode} ${response.body}',
+    };
+  }
+}
+
 }

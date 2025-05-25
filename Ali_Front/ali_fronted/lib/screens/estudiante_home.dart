@@ -135,8 +135,8 @@ class _EstudianteHomeState extends State<EstudianteHome> {
 
             const SizedBox(height: 30),
 
-            // Botón Iniciar Test
-            if (grado == '9')
+             // Botones Iniciar Test según grado
+            if (grado == '9') ...[
               ElevatedButton.icon(
                 onPressed: () => Navigator.pushNamed(context, '/test_grado9'),
                 icon: const Icon(Icons.play_circle_fill),
@@ -151,8 +151,22 @@ class _EstudianteHomeState extends State<EstudianteHome> {
                   textStyle: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
-
-            const SizedBox(height: 20),
+            ] else if (grado == '10' || grado == '11') ...[
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pushNamed(context, '/test_grado_10_11'),
+                icon: const Icon(Icons.play_circle_fill),
+                label: Text('Iniciar Test Grado $grado'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8DB9E4),
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30)),
+                  textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
 
             // Botón Cerrar Sesión
             ElevatedButton.icon(

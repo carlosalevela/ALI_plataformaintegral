@@ -4,6 +4,7 @@ import 'screens/register_screen.dart';
 import 'screens/admin_dashboard.dart';
 import 'screens/estudiante_home.dart';
 import 'screens/test_grado9_screen.dart'; // ✅ Importación añadida
+import 'screens/test_grado_10_11_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -26,7 +27,8 @@ class MyApp extends StatelessWidget {
         '/register': (context) => const RegisterScreen(),
         '/admin': (context) => const AdminDashboard(),
         '/estudiante': (context) => const EstudianteHome(),
-        '/test_grado9': (context) => TestGrado9Page(), // ✅ Ruta añadida
+        '/test_grado9': (context) => TestGrado9Page(), 
+        '/test_grado_10_11': (context)=> TestGrado1011Screen(),
       },
       debugShowCheckedModeBanner: false,
     );
