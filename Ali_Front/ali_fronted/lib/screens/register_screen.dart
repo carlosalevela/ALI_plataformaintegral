@@ -153,6 +153,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                     key: _formKey,
                     child: Column(
                       children: [
+                        // Campo Usuario
                         TextFormField(
                           controller: _username,
                           onFieldSubmitted: (_) => _register(),
@@ -161,9 +162,12 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                             prefixIcon: const Icon(Icons.person),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          validator: (val) => val!.isEmpty ? 'Requerido' : null,
+                          validator: (val) =>
+                              val == null || val.trim().isEmpty ? 'Requerido' : null,
                         ),
                         const SizedBox(height: 16),
+
+                        // Campo Nombre completo (validación de nombre completo)
                         TextFormField(
                           controller: _nombre,
                           onFieldSubmitted: (_) => _register(),
@@ -172,9 +176,22 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                             prefixIcon: const Icon(Icons.badge),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          validator: (val) => val!.isEmpty ? 'Requerido' : null,
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Requerido';
+                            }
+                            final partes = val.trim().split(' ');
+                            // Debe tener al menos dos palabras y cada palabra mínimo 2 caracteres
+                            if (partes.length < 2 ||
+                                partes.any((p) => p.trim().length < 2)) {
+                              return 'Ingrese nombre completo';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
+
+                        // Campo Correo electrónico (con validación mínima)
                         TextFormField(
                           controller: _email,
                           onFieldSubmitted: (_) => _register(),
@@ -183,9 +200,23 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                             prefixIcon: const Icon(Icons.email),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          validator: (val) => val!.contains('@') ? null : 'Correo inválido',
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Requerido';
+                            }
+                            final email = val.trim();
+                            if (!email.contains('@')) {
+                              return 'Correo inválido';
+                            }
+                            if (!email.toLowerCase().endsWith('@gmail.com')) {
+                              return 'Solo se aceptan correos @gmail.com';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
+
+                        // Campo Grado
                         DropdownButtonFormField<String>(
                           decoration: InputDecoration(
                             labelText: 'Grado',
@@ -207,6 +238,8 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                           validator: (val) => val == null ? 'Seleccione un grado' : null,
                         ),
                         const SizedBox(height: 16),
+
+                        // Campo Edad
                         TextFormField(
                           controller: _edad,
                           keyboardType: TextInputType.number,
@@ -218,12 +251,14 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           validator: (val) {
-                            if (val == null || val.isEmpty) return 'Requerido';
-                            if (int.tryParse(val) == null) return 'Debe ser un número válido';
+                            if (val == null || val.trim().isEmpty) return 'Requerido';
+                            if (int.tryParse(val.trim()) == null) return 'Debe ser un número válido';
                             return null;
                           },
                         ),
                         const SizedBox(height: 16),
+
+                        // Campo Contraseña
                         TextFormField(
                           controller: _password,
                           obscureText: true,
@@ -233,9 +268,19 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                             prefixIcon: const Icon(Icons.lock),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          validator: (val) => val!.length < 6 ? 'Mínimo 6 caracteres' : null,
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Requerido';
+                            }
+                            if (val.trim().length < 6) {
+                              return 'Mínimo 6 caracteres';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 24),
+
+                        // Botón Registrar
                         _isLoading
                             ? const CircularProgressIndicator()
                             : SizedBox(
@@ -253,6 +298,8 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                                   ),
                                 ),
                               ),
+
+                        // Mensaje de resultado
                         if (_message != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 20),
@@ -260,6 +307,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                               _message!,
                               style: TextStyle(
                                 color: _message!.startsWith("Error") ? Colors.red : Colors.green,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),

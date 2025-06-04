@@ -120,38 +120,118 @@ class _TestGrado9PageState extends State<TestGrado9Page> with SingleTickerProvid
   }
 
   Future<void> enviarTest() async {
-    if (_respuestas.length < preguntas.length) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor responde todas las preguntas.')),
-      );
-      return;
-    }
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
-    final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado9/');
-
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'usuario': _userId,
-        'respuestas': _respuestas,
-      }),
+  if (_respuestas.length < preguntas.length) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Por favor responde todas las preguntas.')),
     );
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      await prefs.remove('test_grado9_respuestas_$_userId');
-      // ... lógica de resultado sin cambios ...
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error al enviar el test.')),
-      );
-    }
+    return;
   }
+
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('access_token');
+
+  final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado9/');
+
+  final response = await http.post(
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+    body: jsonEncode({
+      'usuario': _userId,
+      'respuestas': _respuestas,
+    }),
+  );
+
+  if (response.statusCode == 200 || response.statusCode == 201) {
+    final data = jsonDecode(response.body);
+    await prefs.remove('test_grado9_respuestas_$_userId');
+
+    final total = _respuestas.length;
+    final contador = {'A': 0, 'B': 0, 'C': 0, 'D': 0};
+
+    _respuestas.values.forEach((v) {
+      if (contador.containsKey(v)) contador[v] = contador[v]! + 1;
+    });
+
+    final resultado = data['resultado'].toString();
+    IconData icono;
+    Color color;
+
+    if (resultado.toLowerCase().contains('tecnológico')) {
+      icono = Icons.memory;
+      color = Colors.blueGrey;
+    } else if (resultado.toLowerCase().contains('técnico')) {
+      icono = Icons.engineering;
+      color = Colors.indigo;
+    } else if (resultado.toLowerCase().contains('artístico')) {
+      icono = Icons.palette;
+      color = Colors.deepPurple;
+    } else if (resultado.toLowerCase().contains('empresarial')) {
+      icono = Icons.business_center;
+      color = Colors.teal;
+    } else {
+      icono = Icons.lightbulb;
+      color = Colors.blueGrey;
+    }
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('🎯 Resultado del Test'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 500),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.05),
+                border: Border.all(color: color, width: 1.5),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Icon(icono, color: color, size: 36),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      '💼 Modalidad sugerida:\n$resultado',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text('Me gusta: ${(contador['A']! * 100 / total).toStringAsFixed(1)}%'),
+            Text('Me interesa: ${(contador['B']! * 100 / total).toStringAsFixed(1)}%'),
+            Text('No me gusta: ${(contador['C']! * 100 / total).toStringAsFixed(1)}%'),
+            Text('No me interesa: ${(contador['D']! * 100 / total).toStringAsFixed(1)}%'),
+            const SizedBox(height: 16),
+            const Text('🎉 ¡Gracias por completar el test!', style: TextStyle(fontStyle: FontStyle.italic)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          )
+        ],
+      ),
+    );
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Error al enviar el test.')),
+    );
+  }
+}
 
   IconData _getIcon(String key) {
     switch (key) {
