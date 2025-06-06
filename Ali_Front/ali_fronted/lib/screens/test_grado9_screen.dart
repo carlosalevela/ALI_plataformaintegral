@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'resultado_test9_screen.dart';
+
 import 'dart:convert';
 
 class TestGrado9Page extends StatefulWidget {
@@ -176,54 +178,22 @@ class _TestGrado9PageState extends State<TestGrado9Page> with SingleTickerProvid
       color = Colors.blueGrey;
     }
 
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('🎯 Resultado del Test'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 500),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.05),
-                border: Border.all(color: color, width: 1.5),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Icon(icono, color: color, size: 36),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      '💼 Modalidad sugerida:\n$resultado',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text('Me gusta: ${(contador['A']! * 100 / total).toStringAsFixed(1)}%'),
-            Text('Me interesa: ${(contador['B']! * 100 / total).toStringAsFixed(1)}%'),
-            Text('No me gusta: ${(contador['C']! * 100 / total).toStringAsFixed(1)}%'),
-            Text('No me interesa: ${(contador['D']! * 100 / total).toStringAsFixed(1)}%'),
-            const SizedBox(height: 16),
-            const Text('🎉 ¡Gracias por completar el test!', style: TextStyle(fontStyle: FontStyle.italic)),
-          ],
+    final porcentajes = {
+      'Me gusta': (contador['A']! * 100 / total),
+      'Me interesa': (contador['B']! * 100 / total),
+      'No me gusta': (contador['C']! * 100 / total),
+      'No me interesa': (contador['D']! * 100 / total),
+    };
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ResultadoTest9Screen(
+          resultado: resultado,
+          porcentajes: porcentajes,
+          icono: icono,
+          color: color,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cerrar'),
-          )
-        ],
       ),
     );
   } else {
@@ -232,7 +202,6 @@ class _TestGrado9PageState extends State<TestGrado9Page> with SingleTickerProvid
     );
   }
 }
-
   IconData _getIcon(String key) {
     switch (key) {
       case 'A':
