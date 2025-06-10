@@ -17,9 +17,14 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
     """
     API para gestionar los tests de grado 9 con predicción automática.
     """
-    queryset = TestGrado9.objects.all()
     serializer_class = TestGrado9Serializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff or user.is_superuser:
+            return TestGrado9.objects.all().order_by('-fecha_realizacion')
+        return TestGrado9.objects.filter(usuario=user).order_by('-fecha_realizacion')
 
     def perform_create(self, serializer):
         """

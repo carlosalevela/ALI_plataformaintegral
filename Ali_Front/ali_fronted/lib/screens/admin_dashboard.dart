@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import 'estadisticas_screen.dart';
+
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -22,7 +24,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
-    _verificarPermiso(); // 🔒 Verificamos si es admin antes de cargar
+    _verificarPermiso();
   }
 
   void _verificarPermiso() async {
@@ -31,7 +33,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     if (rol != 'admin') {
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/'); // Redirige si no es admin
+      Navigator.pushReplacementNamed(context, '/');
     } else {
       _loadUsuarios();
     }
@@ -119,6 +121,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
       child: ListTile(
         title: Text(usuario['nombre'] ?? usuario['username']),
         subtitle: Text('Email: ${usuario['email']}'),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EstadisticasUsuarioScreen(
+                usuarioId: usuario['id'],
+                nombre: usuario['nombre'] ?? usuario['username'],
+                grado: usuario['grado'],
+              ),
+            ),
+          );
+        },
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

@@ -14,9 +14,14 @@ class TestGrado10_11ViewSet(viewsets.ModelViewSet):
     """
     API para gestionar los tests de grado 10 y 11 con predicción automática de carrera recomendada.
     """
-    queryset = TestGrado10_11.objects.all()
     serializer_class = TestGrado10_11Serializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff or user.is_superuser:
+            return TestGrado10_11.objects.all().order_by('-fecha_realizacion')
+        return TestGrado10_11.objects.filter(usuario=user).order_by('-fecha_realizacion')
 
     def perform_create(self, serializer):
         """
