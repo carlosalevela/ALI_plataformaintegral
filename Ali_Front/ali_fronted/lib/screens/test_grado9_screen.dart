@@ -147,7 +147,8 @@ class _TestGrado9PageState extends State<TestGrado9Page> with SingleTickerProvid
   );
 
   if (response.statusCode == 200 || response.statusCode == 201) {
-    final data = jsonDecode(response.body);
+    final data = jsonDecode(utf8.decode(response.bodyBytes));
+
     await prefs.remove('test_grado9_respuestas_$_userId');
 
     final total = _respuestas.length;
