@@ -1,6 +1,6 @@
 name: ali_fronted
 description: "A new Flutter project."
-publish_to: 'none' 
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -26,3 +26,10 @@ flutter:
 
   assets:
     - assets/illustration_home.png
+    - assets/fondo_home.png
+    - assets/nino_home.png
+
+  fonts:
+    - family: PatrickHand
+      fonts:
+        - asset: assets/fonts/PatrickHand-Regular.ttf

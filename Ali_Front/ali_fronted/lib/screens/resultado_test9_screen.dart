@@ -169,86 +169,97 @@ class _ResultadoTest9ScreenState extends State<ResultadoTest9Screen>
     );
   }
 
+  Widget _buildBookShape({
+    required double left,
+    required double top,
+    required double width,
+    required double height,
+    required double angle,
+    required Color color1,
+    required Color color2,
+    double opacity = 0.20,
+  }) {
+    return Positioned(
+      left: left,
+      top: top,
+      child: Opacity(
+        opacity: opacity,
+        child: Transform.rotate(
+          angle: angle,
+          child: Container(
+            width: width,
+            height: height,
+            child: CustomPaint(
+              painter: _BookPainter(color1: color1, color2: color2),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPremiumBackground(BuildContext context) {
-    // Fondo premium: shapes difusas, blur, degradados.
+    // Fondo premium: solo tonos azules cálidos y libros difusos
     return Stack(
       children: [
-        // Degradado principal.
+        // Degradado principal azules cálidos.
         Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
+                Color(0xFFB3E6FB),
                 Color(0xFFDCF3FF),
-                Color(0xFFF4E9FF),
-                Color(0xFFEAFBFB),
+                Color(0xFF77C8F8),
+                Color(0xFF4C9ED9),
               ],
+              stops: [0.05, 0.5, 0.8, 1.0],
             ),
           ),
         ),
-        // Shapes borrosos y gradientes "premium"
-        Positioned(
-          left: -90,
-          top: -30,
-          child: _blurShape(180, 180, Colors.blue.withOpacity(0.18)),
+        // "Libros" en el fondo
+        _buildBookShape(
+          left: 30,
+          top: 30,
+          width: 150,
+          height: 70,
+          angle: -0.24,
+          color1: const Color(0xFF61A4FB),
+          color2: const Color(0xFFB3E6FB),
+          opacity: 0.19,
         ),
-        Positioned(
-          right: -60,
-          top: 70,
-          child: _blurShape(140, 140, Colors.orange.withOpacity(0.15)),
+        _buildBookShape(
+          left: MediaQuery.of(context).size.width - 90,
+          top: 105,
+          width: 120,
+          height: 60,
+          angle: 0.18,
+          color1: const Color(0xFF2196F3),
+          color2: const Color(0xFFB3E6FB),
+          opacity: 0.14,
         ),
-        Positioned(
-          left: 24,
-          bottom: 60,
-          child: _blurShape(80, 80, Colors.green.withOpacity(0.11)),
+        _buildBookShape(
+          left: 60,
+          top: MediaQuery.of(context).size.height - 210,
+          width: 80,
+          height: 38,
+          angle: -0.12,
+          color1: const Color(0xFF0DD9F9),
+          color2: const Color(0xFFB3E6FB),
+          opacity: 0.16,
         ),
-        Positioned(
-          right: 28,
-          bottom: 34,
-          child: _blurShape(54, 54, Colors.purple.withOpacity(0.12)),
-        ),
-        // Shape decorativa extra (onda sutil)
-        Positioned(
-          left: -110,
-          bottom: -20,
-          child: Transform.rotate(
-            angle: 0.13,
-            child: Container(
-              width: 280,
-              height: 85,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.blueAccent.withOpacity(0.10),
-                    Colors.white.withOpacity(0.02),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(40),
-              ),
-            ),
-          ),
+        _buildBookShape(
+          left: MediaQuery.of(context).size.width - 120,
+          top: MediaQuery.of(context).size.height - 100,
+          width: 90,
+          height: 36,
+          angle: 0.18,
+          color1: const Color(0xFF3EB9E7),
+          color2: const Color(0xFFDCF3FF),
+          opacity: 0.13,
         ),
       ],
-    );
-  }
-
-  Widget _blurShape(double w, double h, Color color) {
-    return Container(
-      width: w,
-      height: h,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-        // "Blur" visual:
-        boxShadow: [
-          BoxShadow(
-            color: color,
-            blurRadius: w * 0.8,
-            spreadRadius: w * 0.17,
-          ),
-        ],
-      ),
     );
   }
 
@@ -486,4 +497,57 @@ class _ResultadoTest9ScreenState extends State<ResultadoTest9Screen>
       ),
     );
   }
+}
+
+// Dibuja un "libro" estilizado y difuso
+class _BookPainter extends CustomPainter {
+  final Color color1;
+  final Color color2;
+
+  _BookPainter({required this.color1, required this.color2});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint cover = Paint()
+      ..shader = LinearGradient(
+        colors: [color1, color2],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final double radius = size.height * 0.25;
+
+    // Dibuja la portada del libro
+    final RRect bookRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height * 0.82),
+      Radius.circular(radius),
+    );
+    canvas.drawRRect(bookRect, cover);
+
+    // Lomo central
+    final Paint spine = Paint()
+      ..color = Colors.white.withOpacity(0.16)
+      ..strokeWidth = size.width * 0.08
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(size.width * 0.12, size.height * 0.1),
+      Offset(size.width * 0.12, size.height * 0.75),
+      spine,
+    );
+
+    // Simula páginas con líneas difusas
+    final Paint pages = Paint()
+      ..color = Colors.white.withOpacity(0.09)
+      ..strokeWidth = 2.5;
+    for (double y = size.height * 0.13; y < size.height * 0.7; y += 8) {
+      canvas.drawLine(
+        Offset(size.width * 0.17, y),
+        Offset(size.width * 0.82, y + 3),
+        pages,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
