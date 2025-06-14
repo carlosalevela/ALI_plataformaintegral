@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
         '/register': (context) => const RegisterScreen(),
         '/admin': (context) => const AdminDashboard(),
         '/estudiante': (context) => const EstudianteHome(),
-        '/test_grado9': (context) => TestGrado9Page(), 
+        '/test_grado9': (context) => TestGrado9Screen(), 
         '/test_grado_10_11': (context)=> TestGrado1011Screen(),
       },
       debugShowCheckedModeBanner: false,
