@@ -1,5 +1,9 @@
 import numpy as np
 import joblib
+from django.contrib.auth import get_user_model
+from rest_framework.views import APIView
+from rest_framework import status
+from rest_framework.response import Response
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from .models import TestGrado9
@@ -84,3 +88,43 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
         except Exception as e:
             test_instance.resultado = f"Error interno: {str(e)}"
             test_instance.save()
+
+class ResultadoTest9PorIDView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, test_id):
+        user = request.user
+
+        try:
+            # Si es admin, puede ver cualquier test
+            if user.is_staff or user.is_superuser:
+                test = TestGrado9.objects.get(id=test_id)
+            else:
+                # Usuario normal solo puede ver sus propios tests
+                test = TestGrado9.objects.get(id=test_id, usuario=user)
+        except TestGrado9.DoesNotExist:
+            return Response({"error": "No tienes acceso a este test o no existe."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = TestGrado9Serializer(test)
+        return Response(serializer.data)
+
+
+class TestsDeUsuarioPorAdminView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {"error": "No tienes permiso para ver esta información."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        User = get_user_model()
+        try:
+            usuario = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "El usuario no existe."}, status=status.HTTP_404_NOT_FOUND)
+
+        tests = TestGrado9.objects.filter(usuario=usuario).order_by('-fecha_realizacion')
+        serializer = TestGrado9Serializer(tests, many=True)
+        return Response(serializer.data)

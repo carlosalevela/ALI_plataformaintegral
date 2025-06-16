@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'estudiante_home.dart';
 import 'dart:math' as math;
+import 'resultado_test_10_11_screen.dart';
 
 class TestGrado1011Screen extends StatefulWidget {
   const TestGrado1011Screen({Key? key}) : super(key: key);
@@ -131,7 +132,9 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
     await _borrarProgreso();
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const EstudianteHome()),
+      MaterialPageRoute(
+      builder: (_) => ResultadoTest1011Screen(respuestas: respuestas),
+      ),
     );
   }
 
