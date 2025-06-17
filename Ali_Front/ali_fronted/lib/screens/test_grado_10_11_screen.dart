@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'resultado_test_10_11_screen.dart';
 import 'estudiante_home.dart';
 import 'dart:math' as math;
-import 'resultado_test_10_11_screen.dart';
 
 class TestGrado1011Screen extends StatefulWidget {
   const TestGrado1011Screen({Key? key}) : super(key: key);
@@ -52,7 +52,7 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
     '¿Te interesa investigar fenómenos de la naturaleza como el clima o los ecosistemas?',
     '¿Disfrutas hacer experimentos científicos en laboratorio o campo?',
     '¿Te gustaría trabajar como biólogo, físico o químico?',
-    '¿Te atrae el pensamiento crítico y la búsqueda de evidencias?'
+    '¿Te atrae el pensamiento crítico y la búsqueda de evidencias?',
   ];
 
   final Map<String, String> opciones = {
@@ -130,10 +130,13 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
 
   void enviarTest() async {
     await _borrarProgreso();
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-      builder: (_) => ResultadoTest1011Screen(respuestas: respuestas),
+        builder: (_) => ResultadoTest1011Screen(
+          respuestas: respuestas,
+        ),
       ),
     );
   }
@@ -143,6 +146,34 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
     final pregunta = preguntas[preguntaActual];
     final respuestaSeleccionada = respuestas['pregunta_$preguntaActual'] ?? '';
     double progreso = respuestas.length / preguntas.length;
+
+    if (mostrarModal) {
+      Future.microtask(() {
+        setState(() => mostrarModal = false);
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            title: const Text('¿Enviar respuestas?'),
+            content: const Text('Una vez enviadas no podrás modificarlas. ¿Estás seguro?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  enviarTest();
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: azulFondo),
+                child: const Text('Enviar'),
+              ),
+            ],
+          ),
+        );
+      });
+    }
 
     return Scaffold(
       backgroundColor: azulFondo,
@@ -183,143 +214,123 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    LinearProgressIndicator(
-                      value: progreso,
-                      backgroundColor: Colors.grey[300],
-                      valueColor: AlwaysStoppedAnimation<Color>(azulFondo),
-                      minHeight: 8,
-                    ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        '${(progreso * 100).toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          color: azulFondo,
-                          fontWeight: FontWeight.bold,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 600),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        LinearProgressIndicator(
+                          value: progreso,
+                          backgroundColor: Colors.grey[300],
+                          valueColor: AlwaysStoppedAnimation<Color>(azulFondo),
+                          minHeight: 8,
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Pregunta ${preguntaActual + 1} de ${preguntas.length}',
-                      style: TextStyle(
-                        color: azulFondo,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      pregunta,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    ...opciones.entries.map((opcion) {
-                      final estaSeleccionado = respuestaSeleccionada == opcion.key;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            respuestas['pregunta_$preguntaActual'] = opcion.key;
-                          });
-                          _guardarProgreso();
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(vertical: 6),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          decoration: BoxDecoration(
-                            color: estaSeleccionado ? azulSeleccion : Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: estaSeleccionado ? azulSeleccion : Colors.grey.shade300,
-                              width: 2,
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            '${(progreso * 100).toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              color: azulFondo,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                backgroundColor: estaSeleccionado ? Colors.white : azulFondo,
-                                child: Text(
-                                  opcion.key,
-                                  style: TextStyle(
-                                    color: estaSeleccionado ? azulSeleccion : Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Pregunta ${preguntaActual + 1} de ${preguntas.length}',
+                          style: TextStyle(
+                            color: azulFondo,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          pregunta,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 30),
+                        ...opciones.entries.map((opcion) {
+                          final estaSeleccionado = respuestaSeleccionada == opcion.key;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                respuestas['pregunta_$preguntaActual'] = opcion.key;
+                              });
+                              _guardarProgreso();
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              margin: const EdgeInsets.symmetric(vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: estaSeleccionado ? azulSeleccion : Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: estaSeleccionado ? azulSeleccion : Colors.grey.shade300,
+                                  width: 2,
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  opcion.value,
-                                  style: TextStyle(
-                                    color: estaSeleccionado ? Colors.white : Colors.black87,
-                                    fontSize: 16,
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: estaSeleccionado ? Colors.white : azulFondo,
+                                    child: Text(
+                                      opcion.key,
+                                      style: TextStyle(
+                                        color: estaSeleccionado ? azulSeleccion : Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              )
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                    const SizedBox(height: 30),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        if (preguntaActual > 0)
-                          ElevatedButton(
-                            onPressed: anteriorPregunta,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.grey,
-                              shape: const StadiumBorder(),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      opcion.value,
+                                      style: TextStyle(
+                                        color: estaSeleccionado ? Colors.white : Colors.black87,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  )
+                                ],
+                              ),
                             ),
-                            child: const Text('Anterior'),
-                          ),
-                        ElevatedButton(
-                          onPressed: respuestaSeleccionada.isNotEmpty ? siguientePregunta : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: azulFondo,
-                            shape: const StadiumBorder(),
-                          ),
-                          child: Text(preguntaActual == preguntas.length - 1 ? 'Finalizar' : 'Siguiente'),
+                          );
+                        }).toList(),
+                        const SizedBox(height: 30),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            if (preguntaActual > 0)
+                              ElevatedButton(
+                                onPressed: anteriorPregunta,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.grey,
+                                  shape: const StadiumBorder(),
+                                ),
+                                child: const Text('Anterior'),
+                              ),
+                            ElevatedButton(
+                              onPressed: respuestaSeleccionada.isNotEmpty ? siguientePregunta : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: azulFondo,
+                                shape: const StadiumBorder(),
+                              ),
+                              child: Text(preguntaActual == preguntas.length - 1 ? 'Finalizar' : 'Siguiente'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-          if (mostrarModal)
-            Center(
-              child: AlertDialog(
-                title: const Text('¿Enviar respuestas?'),
-                content: const Text('Una vez enviadas no podrás modificarlas. ¿Estás seguro?'),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        mostrarModal = false;
-                      });
-                    },
-                    child: const Text('Cancelar'),
-                  ),
-                  ElevatedButton(
-                    onPressed: enviarTest,
-                    style: ElevatedButton.styleFrom(backgroundColor: azulFondo),
-                    child: const Text('Enviar'),
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );
@@ -369,4 +380,3 @@ class _AnimatedBackgroundState extends State<_AnimatedBackground> with TickerPro
     );
   }
 }
-
