@@ -128,3 +128,25 @@ class TestsDeUsuarioPorAdminView(APIView):
         tests = TestGrado9.objects.filter(usuario=usuario).order_by('-fecha_realizacion')
         serializer = TestGrado9Serializer(tests, many=True)
         return Response(serializer.data)
+
+class FiltroPorTecnicoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {"error": "No tienes permisos para ver esta información."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        tecnico = request.query_params.get("tecnico", "").strip()
+
+        if not tecnico:
+            return Response(
+                {"error": "Debes especificar un técnico en el parámetro 'tecnico'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        tests_filtrados = TestGrado9.objects.filter(resultado__icontains=tecnico).order_by("-fecha_realizacion")
+        serializer = TestGrado9Serializer(tests_filtrados, many=True)
+        return Response(serializer.data)
