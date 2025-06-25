@@ -148,3 +148,26 @@ class TestsGrado10_11DeUsuarioView(APIView):
         tests = TestGrado10_11.objects.filter(usuario=usuario).order_by('-fecha_realizacion')
         serializer = TestGrado10_11Serializer(tests, many=True)
         return Response(serializer.data)
+
+class FiltroPorCarreraView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {"error": "No tienes permisos para ver esta información."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        carrera = request.query_params.get("carrera", "").strip()
+
+        if not carrera:
+            return Response(
+                {"error": "Debes especificar una carrera en el parámetro 'carrera'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        tests_filtrados = TestGrado10_11.objects.filter(resultado__icontains=carrera).order_by("-fecha_realizacion")
+        serializer = TestGrado10_11Serializer(tests_filtrados, many=True)
+        return Response(serializer.data)
+

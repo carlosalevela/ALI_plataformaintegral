@@ -49,6 +49,63 @@ class _EstadisticasUsuarioScreenState extends State<EstadisticasUsuarioScreen> {
     }
   }
 
+  Future<void> _mostrarResultadoIndividual(int testId) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        title: Text('Cargando...'),
+        content: SizedBox(
+          height: 50,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+    );
+
+    try {
+      final api = ApiService();
+      Map<String, dynamic> resultado = {};
+
+      if (widget.grado == 9) {
+        resultado = await api.fetchResultadoTest9PorId(testId);
+      } else if (widget.grado == 10 || widget.grado == 11) {
+        resultado = await api.fetchResultadoTest10y11PorId(testId);
+      }
+
+      Navigator.pop(context); // cerrar "Cargando..."
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Resultado del Test'),
+          content: Text(resultado['resultado'] ?? 'Sin resultado disponible'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      Navigator.pop(context); // cerrar "Cargando..."
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error'),
+          content: Text('No se pudo obtener el resultado: $e'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tipoTest = widget.grado == 9 ? "Grado 9" : "Grado 10/11";
@@ -91,7 +148,10 @@ class _EstadisticasUsuarioScreenState extends State<EstadisticasUsuarioScreen> {
                             ),
                             title: Text('Test $tipoTest'),
                             subtitle: Text('Fecha: ${test['fecha'] ?? '-'}'),
-                            // Puedes agregar aquí más campos, como puntaje, resultado, etc.
+                            trailing: const Icon(Icons.visibility, color: Colors.blue),
+                            onTap: () async {
+                              await _mostrarResultadoIndividual(test['id']);
+                            },
                           ),
                         )),
                   ],
