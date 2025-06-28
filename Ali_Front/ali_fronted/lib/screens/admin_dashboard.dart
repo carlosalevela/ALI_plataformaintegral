@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import 'estadisticas_screen.dart';
 
-
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
 
@@ -67,18 +66,61 @@ class _AdminDashboardState extends State<AdminDashboard> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Editar Usuario"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: const Color(0xFFf5f9ff),
+        title: const Text(
+          "Editar Usuario",
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2a3f5f)),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: nombreCtrl, decoration: const InputDecoration(labelText: 'Nombre')),
-            TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email')),
-            TextField(controller: gradoCtrl, decoration: const InputDecoration(labelText: 'Grado')),
+            TextField(
+              controller: nombreCtrl,
+              decoration: InputDecoration(
+                labelText: 'Nombre',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: emailCtrl,
+              decoration: InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: gradoCtrl,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Grado',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
-          ElevatedButton(
+          TextButton.icon(
+            icon: const Icon(Icons.cancel, color: Colors.redAccent),
+            label: const Text("Cancelar", style: TextStyle(color: Colors.redAccent)),
+            onPressed: () => Navigator.pop(context),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.save),
+            label: const Text("Guardar"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF59bde9),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
             onPressed: () async {
               final success = await apiService.editarUsuario(usuario['id'], {
                 'nombre': nombreCtrl.text.trim(),
@@ -90,7 +132,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 _loadUsuarios();
               }
             },
-            child: const Text("Guardar"),
           ),
         ],
       ),
@@ -101,11 +142,49 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final confirmado = await showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("¿Eliminar usuario?"),
-        content: const Text("Esta acción no se puede deshacer."),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        titlePadding: const EdgeInsets.all(0),
+        title: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: const BoxDecoration(
+            color: Color(0xFF8db9e4),
+            borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+          ),
+          child: Row(
+            children: const [
+              Icon(Icons.warning_amber_rounded, color: Colors.white),
+              SizedBox(width: 10),
+              Text(
+                "Confirmar eliminación",
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        content: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          child: Text(
+            "¿Estás seguro de eliminar este usuario?\n\nEsta acción no se puede deshacer.",
+            style: TextStyle(fontSize: 15),
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancelar")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Eliminar")),
+          TextButton.icon(
+            icon: const Icon(Icons.cancel, color: Colors.grey),
+            label: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+            onPressed: () => Navigator.pop(context, false),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.delete_forever),
+            label: const Text("Eliminar"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+          ),
         ],
       ),
     );
@@ -118,9 +197,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _buildUsuarioCard(Map<String, dynamic> usuario) {
     return Card(
-      child: ListTile(
-        title: Text(usuario['nombre'] ?? usuario['username']),
-        subtitle: Text('Email: ${usuario['email']}'),
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: () {
           Navigator.push(
             context,
@@ -133,19 +214,79 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           );
         },
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _mostrarDialogoEdicion(usuario),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _eliminarUsuario(usuario['id']),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (usuario['nombre'] != null)
+                Text(
+                  usuario['nombre'],
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              Text('Email: ${usuario['email']}', style: const TextStyle(fontSize: 14)),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.edit, size: 16),
+                    onPressed: () => _mostrarDialogoEdicion(usuario),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF59bde9),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    label: const Text("Editar"),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.delete_forever, size: 16),
+                    onPressed: () => _eliminarUsuario(usuario['id']),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    label: const Text("Eliminar"),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSeccion(String titulo, List<Map<String, dynamic>> usuarios) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 800),
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 3))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            titulo,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF3a506b),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...usuarios.map((u) => _buildUsuarioCard(u)).toList(),
+        ],
       ),
     );
   }
@@ -154,33 +295,30 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Panel del Administrador'),
+        backgroundColor: const Color(0xFF8db9e4),
+        title: const Text('Panel del Administrador', style: TextStyle(color: Colors.white)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, '/');
-            },
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () => Navigator.pushReplacementNamed(context, '/'),
           ),
         ],
       ),
+      backgroundColor: const Color(0xFFf0f4fa),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                const Text('👑 Administradores', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ...administradores.map(_buildUsuarioCard),
-                const Divider(),
-                const Text('📘 Estudiantes - Grado 9', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ...estudiantesPorGrado['9']!.map(_buildUsuarioCard),
-                const Divider(),
-                const Text('📗 Estudiantes - Grado 10', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ...estudiantesPorGrado['10']!.map(_buildUsuarioCard),
-                const Divider(),
-                const Text('📙 Estudiantes - Grado 11', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ...estudiantesPorGrado['11']!.map(_buildUsuarioCard),
-              ],
+          : Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    _buildSeccion("👑 Administradores", administradores),
+                    _buildSeccion("📘 Estudiantes - Grado 9", estudiantesPorGrado['9']!),
+                    _buildSeccion("📗 Estudiantes - Grado 10", estudiantesPorGrado['10']!),
+                    _buildSeccion("📙 Estudiantes - Grado 11", estudiantesPorGrado['11']!),
+                  ],
+                ),
+              ),
             ),
     );
   }
