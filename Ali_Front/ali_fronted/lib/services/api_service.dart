@@ -14,7 +14,7 @@ class ApiService {
       body: jsonEncode({
         'username': username,
         'password': password,
-        'email': email,  
+        'email': email,
       }),
     );
 
@@ -27,11 +27,10 @@ class ApiService {
       final edad = decoded['edad'].toString();
       final userId = decoded['user_id'];
 
-      // Guardar tokens y datos del usuario
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('access_token', data['access']);
       await prefs.setString('refresh_token', data['refresh']);
-      await prefs.setString('rol', rol); 
+      await prefs.setString('rol', rol);
       await prefs.setString('nombre', nombre);
       await prefs.setString('grado', grado);
       await prefs.setString('edad', edad);
@@ -81,6 +80,43 @@ class ApiService {
     }
   }
 
+  // 🔍 Buscar usuarios (nombre, email o username)
+  Future<List<Map<String, dynamic>>> buscarUsuarios({
+    String nombre = '',
+    String email = '',
+    String username = '',
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
+
+    final queryParameters = {
+      if (nombre.isNotEmpty) 'nombre': nombre,
+      if (email.isNotEmpty) 'email': email,
+      if (username.isNotEmpty) 'username': username,
+    };
+
+    final uri = Uri.http(
+      '127.0.0.1:8000',
+      '/Alipsicoorientadora/usuarios/usuarios/',
+      queryParameters,
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Error al buscar usuarios: ${response.statusCode}');
+    }
+  }
+
   // Eliminar un usuario
   Future<bool> deleteUsuario(int id) async {
     final prefs = await SharedPreferences.getInstance();
@@ -116,17 +152,16 @@ class ApiService {
     return response.statusCode == 200;
   }
 
-  // Decodificar token JWT para extraer datos (como el rol)
+  // Decodificar token JWT
   Map<String, dynamic> _decodeJWT(String token) {
     final parts = token.split('.');
     if (parts.length != 3) return {};
-
     final payload = base64Url.normalize(parts[1]);
     final decoded = utf8.decode(base64Url.decode(payload));
     return jsonDecode(decoded);
   }
 
-  // Enviar respuestas al test de grado 9
+  // Enviar test grado 9
   Future<Map<String, dynamic>> enviarTestGrado9(Map<String, dynamic> respuestas) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('access_token');
@@ -142,7 +177,7 @@ class ApiService {
       },
       body: jsonEncode({
         'usuario': userId,
-        'respuestas': respuestas
+        'respuestas': respuestas,
       }),
     );
 
@@ -157,120 +192,122 @@ class ApiService {
     }
   }
 
-  /// Enviar respuestas al test de grado 10 y 11
+  // Enviar test grado 10/11
   Future<Map<String, dynamic>> enviarTestGrado10y11(Map<String, String> respuestas) async {
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('access_token');
-  final userId = prefs.getInt('user_id');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
+    final userId = prefs.getInt('user_id');
 
-  final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado10-11/');
+    final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado10-11/');
 
-  final response = await http.post(
-    url,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    },
-    body: jsonEncode({
-      'usuario': userId,
-      'respuestas': respuestas,
-    }),
-  );
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'usuario': userId,
+        'respuestas': respuestas,
+      }),
+    );
 
-  if (response.statusCode == 200 || response.statusCode == 201) {
-    final data = jsonDecode(response.body);
-    return {'success': true, 'resultado': data};
-  } else {
-    return {
-      'success': false,
-      'message': 'Error en el test: ${response.statusCode} ${response.body}',
-    };
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      return {'success': true, 'resultado': data};
+    } else {
+      return {
+        'success': false,
+        'message': 'Error en el test: ${response.statusCode} ${response.body}',
+      };
+    }
   }
-}
 
+  // Obtener resultado test grado 9 por ID
   Future<Map<String, dynamic>> fetchResultadoTest9PorId(int testId) async {
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('access_token');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
 
-  final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado9/resultado/$testId/');
+    final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado9/resultado/$testId/');
 
-  final response = await http.get(
-    url,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    },
-  );
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
 
-  if (response.statusCode == 200) {
-    return jsonDecode(response.body);
-  } else {
-    throw Exception('Error al obtener resultado test: ${response.statusCode}');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Error al obtener resultado test: ${response.statusCode}');
+    }
   }
-}
 
-Future<List<dynamic>> fetchTestsGrado9PorUsuario(int userId) async {
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('access_token');
+  // Obtener tests grado 9 por usuario
+  Future<List<dynamic>> fetchTestsGrado9PorUsuario(int userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
 
-  final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado9/usuario/$userId/');
+    final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado9/usuario/$userId/');
 
-  final response = await http.get(
-    url,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    },
-  );
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
 
-  if (response.statusCode == 200) {
-    final List<dynamic> data = jsonDecode(response.body);
-    return data;
-  } else {
-    throw Exception('Error al obtener tests de usuario: ${response.statusCode}');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Error al obtener tests de usuario: ${response.statusCode}');
+    }
   }
-}
 
+  // Obtener tests grado 10/11 por usuario
   Future<List<dynamic>> fetchTestsGrado10y11PorUsuario(int userId) async {
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('access_token');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
 
-  final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado10-11/usuario/$userId/');
+    final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado10-11/usuario/$userId/');
 
-  final response = await http.get(
-    url,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    },
-  );
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
 
-  if (response.statusCode == 200) {
-    final List<dynamic> data = jsonDecode(response.body);
-    return data;
-  } else {
-    throw Exception('Error al obtener tests de usuario 10/11: ${response.statusCode}');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Error al obtener tests de usuario 10/11: ${response.statusCode}');
+    }
   }
-}
 
+  // Obtener resultado test 10/11 por ID
   Future<Map<String, dynamic>> fetchResultadoTest10y11PorId(int testId) async {
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('access_token');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
 
-  final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado10-11/resultado/$testId/');
+    final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado10-11/resultado/$testId/');
 
-  final response = await http.get(
-    url,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    },
-  );
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
 
-  if (response.statusCode == 200) {
-    return jsonDecode(response.body);
-  } else {
-    throw Exception('Error al obtener resultado test 10/11: ${response.statusCode}');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Error al obtener resultado test 10/11: ${response.statusCode}');
+    }
   }
-}
 }
