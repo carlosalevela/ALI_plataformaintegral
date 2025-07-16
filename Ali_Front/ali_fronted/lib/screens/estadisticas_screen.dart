@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // ✅ AÑADIDO para formato de fecha
 import '../services/api_service.dart';
 
 class EstadisticasUsuarioScreen extends StatefulWidget {
@@ -106,6 +107,16 @@ class _EstadisticasUsuarioScreenState extends State<EstadisticasUsuarioScreen> {
     }
   }
 
+  String _formatearFechaHora(String? fechaString) {
+    if (fechaString == null) return '-';
+    try {
+      final fecha = DateTime.parse(fechaString).toLocal();
+      return DateFormat('dd/MM/yyyy – hh:mm a').format(fecha); // ✅ formato 12h con AM/PM
+    } catch (e) {
+      return 'Fecha inválida';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tipoTest = widget.grado == 9 ? "Grado 9" : "Grado 10/11";
@@ -147,7 +158,7 @@ class _EstadisticasUsuarioScreenState extends State<EstadisticasUsuarioScreen> {
                               color: widget.grado == 9 ? Colors.deepPurple : Colors.orange,
                             ),
                             title: Text('Test $tipoTest'),
-                            subtitle: Text('Fecha: ${test['fecha'] ?? '-'}'),
+                            subtitle: Text('Fecha: ${_formatearFechaHora(test['fecha_realizacion'])}'), // ✅ Aquí
                             trailing: const Icon(Icons.visibility, color: Colors.blue),
                             onTap: () async {
                               await _mostrarResultadoIndividual(test['id']);

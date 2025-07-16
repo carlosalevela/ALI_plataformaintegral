@@ -11,10 +11,12 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^0.13.5
+  intl: ^0.18.1
   shared_preferences: ^2.2.2
   font_awesome_flutter: ^10.7.0
   cupertino_icons: ^1.0.8
-  fl_chart: ^0.66.0    # <---- AGREGADO PARA EL PIE CHART ANIMADO
+  fl_chart: ^0.66.0  
+  intl: ^0.18.1  # <---- AGREGADO PARA EL PIE CHART ANIMADO
 
 dev_dependencies:
   flutter_test:
