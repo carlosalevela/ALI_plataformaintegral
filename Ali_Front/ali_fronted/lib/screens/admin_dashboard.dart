@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
-import 'estadisticas_screen.dart';
-
+import 'usuarios_screen.dart'; // Asegúrate de crear este archivo también
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -59,90 +58,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  void _mostrarDialogoEdicion(Map<String, dynamic> usuario) {
-    final nombreCtrl = TextEditingController(text: usuario['nombre']);
-    final emailCtrl = TextEditingController(text: usuario['email']);
-    final gradoCtrl = TextEditingController(text: usuario['grado']?.toString());
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Editar Usuario"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nombreCtrl, decoration: const InputDecoration(labelText: 'Nombre')),
-            TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email')),
-            TextField(controller: gradoCtrl, decoration: const InputDecoration(labelText: 'Grado')),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
-          ElevatedButton(
-            onPressed: () async {
-              final success = await apiService.editarUsuario(usuario['id'], {
-                'nombre': nombreCtrl.text.trim(),
-                'email': emailCtrl.text.trim(),
-                'grado': int.tryParse(gradoCtrl.text.trim()),
-              });
-              if (success) {
-                Navigator.pop(context);
-                _loadUsuarios();
-              }
-            },
-            child: const Text("Guardar"),
+  Widget _buildCard(String titulo, IconData icono, List<Map<String, dynamic>> data, Color color) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => UsuariosScreen(titulo: titulo, usuarios: List.from(data)),
           ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _eliminarUsuario(int id) async {
-    final confirmado = await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("¿Eliminar usuario?"),
-        content: const Text("Esta acción no se puede deshacer."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancelar")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Eliminar")),
-        ],
-      ),
-    );
-
-    if (confirmado == true) {
-      final success = await apiService.deleteUsuario(id);
-      if (success) _loadUsuarios();
-    }
-  }
-
-  Widget _buildUsuarioCard(Map<String, dynamic> usuario) {
-    return Card(
-      child: ListTile(
-        title: Text(usuario['nombre'] ?? usuario['username']),
-        subtitle: Text('Email: ${usuario['email']}'),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EstadisticasUsuarioScreen(
-                usuarioId: usuario['id'],
-                nombre: usuario['nombre'] ?? usuario['username'],
-                grado: usuario['grado'],
-              ),
-            ),
-          );
-        },
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _mostrarDialogoEdicion(usuario),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _eliminarUsuario(usuario['id']),
+            Icon(icono, size: 40, color: color),
+            const SizedBox(height: 10),
+            Text(
+              titulo,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -154,32 +95,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Panel del Administrador'),
+        backgroundColor: const Color(0xFF8db9e4),
+        title: const Text('Panel del Administrador', style: TextStyle(color: Colors.white)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, '/');
-            },
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () => Navigator.pushReplacementNamed(context, '/'),
           ),
         ],
       ),
+      backgroundColor: const Color(0xFFf0f4fa),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
+          : GridView.count(
+              crossAxisCount: 2,
+              padding: const EdgeInsets.all(20),
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
               children: [
-                const Text('👑 Administradores', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ...administradores.map(_buildUsuarioCard),
-                const Divider(),
-                const Text('📘 Estudiantes - Grado 9', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ...estudiantesPorGrado['9']!.map(_buildUsuarioCard),
-                const Divider(),
-                const Text('📗 Estudiantes - Grado 10', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ...estudiantesPorGrado['10']!.map(_buildUsuarioCard),
-                const Divider(),
-                const Text('📙 Estudiantes - Grado 11', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ...estudiantesPorGrado['11']!.map(_buildUsuarioCard),
+                _buildCard("👑 Administradores", Icons.admin_panel_settings, administradores, Colors.teal),
+                _buildCard("📘 Estudiantes Grado 9", Icons.school, estudiantesPorGrado['9']!, Colors.blue),
+                _buildCard("📗 Estudiantes Grado 10", Icons.school, estudiantesPorGrado['10']!, Colors.green),
+                _buildCard("📙 Estudiantes Grado 11", Icons.school, estudiantesPorGrado['11']!, Colors.orange),
               ],
             ),
     );

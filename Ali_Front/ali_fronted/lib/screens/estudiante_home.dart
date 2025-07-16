@@ -30,9 +30,9 @@ class _EstudianteHomeState extends State<EstudianteHome> {
 
   String _tipoTest(String grado) {
     final g = int.tryParse(grado) ?? 0;
-    if (g == 10) return 'Test Técnico';
-    if (g == 11) return 'Test Tecnológico';
-    if (g == 9) return 'Test Grado 9';
+    if (g == 10) return 'Test Para Recomendacion De Una Carrera';
+    if (g == 11) return 'Test Para Recomendacion De Una Carrera';
+    if (g == 9) return 'Test Para Recomendacion de un Tecnico';
     return 'Test Vocacional';
   }
 

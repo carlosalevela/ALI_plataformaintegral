@@ -1,30 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'resultado_test9_screen.dart';
-
 import 'dart:convert';
+import 'resultado_test9_screen.dart';
+import 'estudiante_home.dart';
+import 'dart:math' as math;
 
 class TestGrado9Page extends StatefulWidget {
+  const TestGrado9Page({Key? key}) : super(key: key);
+
   @override
-  _TestGrado9PageState createState() => _TestGrado9PageState();
+  State<TestGrado9Page> createState() => _TestGrado9PageState();
 }
 
-class _TestGrado9PageState extends State<TestGrado9Page> with SingleTickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final Map<String, String> _respuestas = {};
-  int? _userId;
-
-  late final AnimationController _controller;
-  late final List<Animation<double>> _animations;
-
-  final Map<String, String> opciones = {
-    'A': 'Me gusta',
-    'B': 'Me interesa',
-    'C': 'No me gusta',
-    'D': 'No me interesa',
-  };
-
+class _TestGrado9PageState extends State<TestGrado9Page> with TickerProviderStateMixin {
   final List<String> preguntas = [
     '¿Te gustaría programar aplicaciones o páginas web?',
     '¿Disfrutas resolver problemas técnicos con software o computadoras?',
@@ -68,25 +57,348 @@ class _TestGrado9PageState extends State<TestGrado9Page> with SingleTickerProvid
     '¿Te llama la atención contribuir a la alimentación de la comunidad?',
   ];
 
+  final Map<String, String> opciones = {
+    'A': 'Me gusta',
+    'B': 'Me interesa',
+    'C': 'No me gusta',
+    'D': 'No me interesa',
+  };
+
+  final Map<String, String> respuestas = {};
+  int preguntaActual = 0;
+  bool mostrarModal = false;
+
+  Color azulFondo = const Color(0xFF8db9e4);
+  Color azulSeleccion = const Color(0xFF59bde9);
+
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    )..forward();
-    _animations = List.generate(
-      preguntas.length,
-      (i) => CurvedAnimation(
-        parent: _controller,
-        curve: Interval(
-          i / preguntas.length,
-          (i + 1) / preguntas.length,
-          curve: Curves.easeOut,
+    _cargarProgreso();
+  }
+
+  Future<void> _cargarProgreso() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedIndex = prefs.getInt('grado9_pregunta_actual') ?? 0;
+    final savedResp = prefs.getString('grado9_respuestas');
+    if (savedResp != null) {
+      final Map<String, dynamic> respDecoded = jsonDecode(savedResp);
+      setState(() {
+        preguntaActual = savedIndex;
+        respuestas.addAll(respDecoded.map((k, v) => MapEntry(k, v.toString())));
+      });
+    }
+  }
+
+  Future<void> _guardarProgreso() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('grado9_pregunta_actual', preguntaActual);
+    await prefs.setString('grado9_respuestas', jsonEncode(respuestas));
+  }
+
+  void siguientePregunta() {
+    if (preguntaActual < preguntas.length - 1) {
+      setState(() {
+        preguntaActual++;
+      });
+      _guardarProgreso();
+    } else {
+      setState(() {
+        mostrarModal = true;
+      });
+    }
+  }
+
+  void anteriorPregunta() {
+    if (preguntaActual > 0) {
+      setState(() {
+        preguntaActual--;
+      });
+      _guardarProgreso();
+    }
+  }
+
+  Future<void> enviarTest() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
+    final userId = prefs.getInt('user_id');
+
+    if (token == null || userId == null) return;
+
+    final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado9/');
+    final respuestasFinales = {
+      for (var i = 0; i < preguntas.length; i++)
+        'pregunta_${i + 1}': respuestas['pregunta_$i'] ?? ''
+    };
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'usuario': userId,
+        'respuestas': respuestasFinales,
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      await prefs.remove('grado9_pregunta_actual');
+      await prefs.remove('grado9_respuestas');
+
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      final resultado = data['resultado'].toString();
+
+      final contador = {'A': 0, 'B': 0, 'C': 0, 'D': 0};
+      respuestas.values.forEach((v) {
+        if (contador.containsKey(v)) contador[v] = contador[v]! + 1;
+      });
+      final total = respuestas.length;
+
+      final porcentajes = {
+        'Me gusta': (contador['A']! * 100 / total),
+        'Me interesa': (contador['B']! * 100 / total),
+        'No me gusta': (contador['C']! * 100 / total),
+        'No me interesa': (contador['D']! * 100 / total),
+      };
+
+      IconData icono = Icons.lightbulb;
+      Color color = azulFondo;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ResultadoTest9Screen(
+            resultado: resultado,
+            porcentajes: porcentajes,
+            icono: icono,
+            color: color,
+          ),
         ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pregunta = preguntas[preguntaActual];
+    final respuestaSeleccionada = respuestas['pregunta_$preguntaActual'] ?? '';
+    double progreso = respuestas.length / preguntas.length;
+
+    if (mostrarModal) {
+      Future.microtask(() {
+        setState(() => mostrarModal = false);
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            title: const Text('¿Enviar respuestas?'),
+            content: const Text('Una vez enviadas no podrás modificarlas. ¿Estás seguro?'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  enviarTest();
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: azulFondo),
+                child: const Text('Enviar'),
+              ),
+            ],
+          ),
+        );
+      });
+    }
+
+    return Scaffold(
+      backgroundColor: azulFondo,
+      body: Stack(
+        children: [
+          const Positioned.fill(child: _AnimatedBackground()),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const EstudianteHome()),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+          Center(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 10,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            LinearProgressIndicator(
+                              value: progreso,
+                              backgroundColor: Colors.grey[300],
+                              valueColor: AlwaysStoppedAnimation<Color>(azulFondo),
+                              minHeight: 8,
+                            ),
+                            const SizedBox(height: 6),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                '${(progreso * 100).toStringAsFixed(0)}%',
+                                style: TextStyle(color: azulFondo, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Pregunta ${preguntaActual + 1} de ${preguntas.length}',
+                              style: TextStyle(
+                                color: azulFondo,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              pregunta,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 30),
+                            ...opciones.entries.map((opcion) {
+                              final estaSeleccionado = respuestaSeleccionada == opcion.key;
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    respuestas['pregunta_$preguntaActual'] = opcion.key;
+                                  });
+                                  _guardarProgreso();
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  margin: const EdgeInsets.symmetric(vertical: 6),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  decoration: BoxDecoration(
+                                    color: estaSeleccionado ? azulSeleccion : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: estaSeleccionado ? azulSeleccion : Colors.grey.shade300,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: estaSeleccionado ? Colors.white : azulFondo,
+                                        child: Text(
+                                          opcion.key,
+                                          style: TextStyle(
+                                            color: estaSeleccionado ? azulSeleccion : Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          opcion.value,
+                                          style: TextStyle(
+                                            color: estaSeleccionado ? Colors.white : Colors.black87,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      )
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            const SizedBox(height: 30),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                if (preguntaActual > 0)
+                                  ElevatedButton(
+                                    onPressed: anteriorPregunta,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.grey,
+                                      shape: const StadiumBorder(),
+                                    ),
+                                    child: const Text('Anterior'),
+                                  ),
+                                ElevatedButton(
+                                  onPressed: respuestaSeleccionada.isNotEmpty ? siguientePregunta : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: azulFondo,
+                                    shape: const StadiumBorder(),
+                                  ),
+                                  child: Text(
+                                    preguntaActual == preguntas.length - 1 ? 'Finalizar' : 'Siguiente',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
-    _cargarProgreso();
+  }
+}
+
+class _AnimatedBackground extends StatefulWidget {
+  const _AnimatedBackground();
+
+  @override
+  State<_AnimatedBackground> createState() => _AnimatedBackgroundState();
+}
+
+class _AnimatedBackgroundState extends State<_AnimatedBackground> with TickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation1;
+  late final Animation<double> _animation2;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(duration: const Duration(seconds: 10), vsync: this)..repeat(reverse: true);
+    _animation1 = Tween<double>(begin: 0, end: 20).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _animation2 = Tween<double>(begin: 0, end: -20).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -95,235 +407,20 @@ class _TestGrado9PageState extends State<TestGrado9Page> with SingleTickerProvid
     super.dispose();
   }
 
-  Future<void> _cargarProgreso() async {
-    final prefs = await SharedPreferences.getInstance();
-    _userId = prefs.getInt('user_id');
-    final saved = prefs.getString('test_grado9_respuestas_$_userId');
-    if (saved != null) {
-      setState(() {
-        _respuestas.addAll(
-          Map<String, String>.from(jsonDecode(saved)),
-        );
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🔄 Se restauró tu progreso anterior.')),
-      );
-    }
-  }
-
-  Future<void> _guardarProgreso() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (_userId != null) {
-      await prefs.setString(
-        'test_grado9_respuestas_$_userId',
-        jsonEncode(_respuestas),
-      );
-    }
-  }
-
-  Future<void> enviarTest() async {
-  if (_respuestas.length < preguntas.length) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Por favor responde todas las preguntas.')),
-    );
-    return;
-  }
-
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('access_token');
-
-  final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado9/');
-
-  final response = await http.post(
-    url,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    },
-    body: jsonEncode({
-      'usuario': _userId,
-      'respuestas': _respuestas,
-    }),
-  );
-
-  if (response.statusCode == 200 || response.statusCode == 201) {
-    final data = jsonDecode(utf8.decode(response.bodyBytes));
-
-    await prefs.remove('test_grado9_respuestas_$_userId');
-
-    final total = _respuestas.length;
-    final contador = {'A': 0, 'B': 0, 'C': 0, 'D': 0};
-
-    _respuestas.values.forEach((v) {
-      if (contador.containsKey(v)) contador[v] = contador[v]! + 1;
-    });
-
-    final resultado = data['resultado'].toString();
-    IconData icono;
-    Color color;
-
-    if (resultado.toLowerCase().contains('tecnológico')) {
-      icono = Icons.memory;
-      color = Colors.blueGrey;
-    } else if (resultado.toLowerCase().contains('técnico')) {
-      icono = Icons.engineering;
-      color = Colors.indigo;
-    } else if (resultado.toLowerCase().contains('artístico')) {
-      icono = Icons.palette;
-      color = Colors.deepPurple;
-    } else if (resultado.toLowerCase().contains('empresarial')) {
-      icono = Icons.business_center;
-      color = Colors.teal;
-    } else {
-      icono = Icons.lightbulb;
-      color = Colors.blueGrey;
-    }
-
-    final porcentajes = {
-      'Me gusta': (contador['A']! * 100 / total),
-      'Me interesa': (contador['B']! * 100 / total),
-      'No me gusta': (contador['C']! * 100 / total),
-      'No me interesa': (contador['D']! * 100 / total),
-    };
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ResultadoTest9Screen(
-          resultado: resultado,
-          porcentajes: porcentajes,
-          icono: icono,
-          color: color,
-        ),
-      ),
-    );
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Error al enviar el test.')),
-    );
-  }
-}
-  IconData _getIcon(String key) {
-    switch (key) {
-      case 'A':
-        return Icons.thumb_up;
-      case 'B':
-        return Icons.favorite;
-      case 'C':
-        return Icons.thumb_down;
-      case 'D':
-        return Icons.block;
-      default:
-        return Icons.help;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).primaryColor;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        backgroundColor: primary,
-        elevation: 0,
-        title: const Text('Test Grado 9 - RIASEC'),
-      ),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-            itemCount: preguntas.length,
-            itemBuilder: (context, index) {
-              final preguntaKey = 'pregunta_${index + 1}';
-              final anim = _animations[index];
-              return FadeTransition(
-                opacity: anim,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.2),
-                    end: Offset.zero,
-                  ).animate(anim),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border(
-                        left: BorderSide(color: primary, width: 4),
-                      ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 6,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${index + 1}. ${preguntas[index]}',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade800,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          ...opciones.entries.map((entry) {
-                            final selected = _respuestas[preguntaKey] == entry.key;
-                            return RadioListTile<String>(
-                              activeColor: primary,
-                              title: Row(
-                                children: [
-                                  Icon(
-                                    _getIcon(entry.key),
-                                    color: selected ? primary : Colors.grey.shade600,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    entry.value,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight:
-                                          selected ? FontWeight.w600 : FontWeight.w500,
-                                      color: selected
-                                          ? primary
-                                          : Colors.grey.shade700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              value: entry.key,
-                              groupValue: _respuestas[preguntaKey],
-                              onChanged: (value) {
-                                setState(() {
-                                  _respuestas[preguntaKey] = value!;
-                                });
-                                _guardarProgreso();
-                              },
-                            );
-                          }).toList()
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: primary,
-        onPressed: enviarTest,
-        child: const Icon(Icons.send, size: 28),
-      ),
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) {
+        return Stack(
+          children: [
+            Positioned(top: 100 + _animation1.value, left: 40, child: Icon(Icons.menu_book, size: 48, color: Colors.white.withOpacity(0.2))),
+            Positioned(bottom: 120 + _animation2.value, right: 60, child: Icon(Icons.computer, size: 48, color: Colors.white.withOpacity(0.2))),
+            Positioned(top: 220 + _animation2.value, right: 20, child: Icon(Icons.school, size: 48, color: Colors.white.withOpacity(0.15))),
+            Positioned(bottom: 40 + _animation1.value, left: 30, child: Icon(Icons.pedal_bike, size: 48, color: Colors.white.withOpacity(0.1))),
+          ],
+        );
+      },
     );
   }
 }

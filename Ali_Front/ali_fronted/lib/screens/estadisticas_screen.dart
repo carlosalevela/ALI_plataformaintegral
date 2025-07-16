@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // ✅ AÑADIDO para formato de fecha
 import '../services/api_service.dart';
 
 class EstadisticasUsuarioScreen extends StatefulWidget {
@@ -49,6 +50,73 @@ class _EstadisticasUsuarioScreenState extends State<EstadisticasUsuarioScreen> {
     }
   }
 
+  Future<void> _mostrarResultadoIndividual(int testId) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        title: Text('Cargando...'),
+        content: SizedBox(
+          height: 50,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+    );
+
+    try {
+      final api = ApiService();
+      Map<String, dynamic> resultado = {};
+
+      if (widget.grado == 9) {
+        resultado = await api.fetchResultadoTest9PorId(testId);
+      } else if (widget.grado == 10 || widget.grado == 11) {
+        resultado = await api.fetchResultadoTest10y11PorId(testId);
+      }
+
+      Navigator.pop(context); // cerrar "Cargando..."
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Resultado del Test'),
+          content: Text(resultado['resultado'] ?? 'Sin resultado disponible'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      Navigator.pop(context); // cerrar "Cargando..."
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error'),
+          content: Text('No se pudo obtener el resultado: $e'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  String _formatearFechaHora(String? fechaString) {
+    if (fechaString == null) return '-';
+    try {
+      final fecha = DateTime.parse(fechaString).toLocal();
+      return DateFormat('dd/MM/yyyy – hh:mm a').format(fecha); // ✅ formato 12h con AM/PM
+    } catch (e) {
+      return 'Fecha inválida';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tipoTest = widget.grado == 9 ? "Grado 9" : "Grado 10/11";
@@ -90,8 +158,11 @@ class _EstadisticasUsuarioScreenState extends State<EstadisticasUsuarioScreen> {
                               color: widget.grado == 9 ? Colors.deepPurple : Colors.orange,
                             ),
                             title: Text('Test $tipoTest'),
-                            subtitle: Text('Fecha: ${test['fecha'] ?? '-'}'),
-                            // Puedes agregar aquí más campos, como puntaje, resultado, etc.
+                            subtitle: Text('Fecha: ${_formatearFechaHora(test['fecha_realizacion'])}'), // ✅ Aquí
+                            trailing: const Icon(Icons.visibility, color: Colors.blue),
+                            onTap: () async {
+                              await _mostrarResultadoIndividual(test['id']);
+                            },
                           ),
                         )),
                   ],

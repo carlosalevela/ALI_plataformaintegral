@@ -31,13 +31,27 @@ class UsuarioAPI(APIView):
     permission_classes = [permissions.IsAuthenticated]  # Requiere autenticación
 
     # OBTENER TODOS LOS USUARIOS (Solo Admins)
+    
     def get(self, request):
         if not request.user.is_authenticated or request.user.rol != "admin":
             return Response({"error": "No tienes permiso para ver esta lista"}, status=status.HTTP_403_FORBIDDEN)
 
+        nombre = request.query_params.get("nombre", "").strip()
+        email = request.query_params.get("email", "").strip()
+        username = request.query_params.get("username", "").strip()
+
         usuarios = Usuario.objects.all()
+
+        if nombre:
+            usuarios = usuarios.filter(nombre__icontains=nombre)
+        if email:
+            usuarios = usuarios.filter(email__icontains=email)
+        if username:
+            usuarios = usuarios.filter(username__icontains=username)
+
         serializer = UsuarioSerializer(usuarios, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
     # REGISTRO DE USUARIOS (Estudiantes y Admins)
     permission_classes = [permissions.AllowAny]  # 🔓 Registro sin autenticación

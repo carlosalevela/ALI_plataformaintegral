@@ -1,5 +1,7 @@
 import numpy as np
 import joblib
+from rest_framework.views import APIView
+from django.contrib.auth import get_user_model
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -105,3 +107,67 @@ class TestGrado10_11ViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ResultadoTest10_11PorIDView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, test_id):
+        user = request.user
+
+        try:
+            if user.is_staff or user.is_superuser:
+                test = TestGrado10_11.objects.get(id=test_id)
+            else:
+                test = TestGrado10_11.objects.get(id=test_id, usuario=user)
+        except TestGrado10_11.DoesNotExist:
+            return Response(
+                {"error": "No tienes acceso a este test o no existe."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = TestGrado10_11Serializer(test)
+        return Response(serializer.data)
+    
+class TestsGrado10_11DeUsuarioView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {"error": "No tienes permiso para ver esta información."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        User = get_user_model()
+        try:
+            usuario = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "El usuario no existe."}, status=status.HTTP_404_NOT_FOUND)
+
+        tests = TestGrado10_11.objects.filter(usuario=usuario).order_by('-fecha_realizacion')
+        serializer = TestGrado10_11Serializer(tests, many=True)
+        return Response(serializer.data)
+
+class FiltroPorCarreraView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {"error": "No tienes permisos para ver esta información."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        carrera = request.query_params.get("carrera", "").strip()
+
+        if not carrera:
+            return Response(
+                {"error": "Debes especificar una carrera en el parámetro 'carrera'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        tests_filtrados = TestGrado10_11.objects.filter(resultado__icontains=carrera).order_by("-fecha_realizacion")
+        serializer = TestGrado10_11Serializer(tests_filtrados, many=True)
+        return Response(serializer.data)
+
