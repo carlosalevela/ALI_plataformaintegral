@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // ✅ AÑADIDO para formato de fecha
+import 'package:intl/intl.dart'; // ✅ Para formatear fechas
 import '../services/api_service.dart';
 
 class EstadisticasUsuarioScreen extends StatefulWidget {
@@ -111,9 +111,37 @@ class _EstadisticasUsuarioScreenState extends State<EstadisticasUsuarioScreen> {
     if (fechaString == null) return '-';
     try {
       final fecha = DateTime.parse(fechaString).toLocal();
-      return DateFormat('dd/MM/yyyy – hh:mm a').format(fecha); // ✅ formato 12h con AM/PM
+      return DateFormat('dd/MM/yyyy – hh:mm a').format(fecha); // formato bonito 12h
     } catch (e) {
       return 'Fecha inválida';
+    }
+  }
+
+  String _tiempoTranscurrido(String? fechaString) {
+    if (fechaString == null) return '';
+    try {
+      final fecha = DateTime.parse(fechaString).toLocal();
+      final ahora = DateTime.now();
+      final diferencia = ahora.difference(fecha);
+
+      if (diferencia.inDays == 0) {
+        return 'Hoy';
+      } else if (diferencia.inDays == 1) {
+        return 'Hace 1 día';
+      } else if (diferencia.inDays < 7) {
+        return 'Hace ${diferencia.inDays} días';
+      } else if (diferencia.inDays < 30) {
+        final semanas = (diferencia.inDays / 7).floor();
+        return 'Hace $semanas semana${semanas > 1 ? 's' : ''}';
+      } else if (diferencia.inDays < 365) {
+        final meses = (diferencia.inDays / 30).floor();
+        return 'Hace $meses mes${meses > 1 ? 'es' : ''}';
+      } else {
+        final anos = (diferencia.inDays / 365).floor();
+        return 'Hace $anos año${anos > 1 ? 's' : ''}';
+      }
+    } catch (e) {
+      return '';
     }
   }
 
@@ -158,7 +186,9 @@ class _EstadisticasUsuarioScreenState extends State<EstadisticasUsuarioScreen> {
                               color: widget.grado == 9 ? Colors.deepPurple : Colors.orange,
                             ),
                             title: Text('Test $tipoTest'),
-                            subtitle: Text('Fecha: ${_formatearFechaHora(test['fecha_realizacion'])}'), // ✅ Aquí
+                            subtitle: Text(
+                              'Fecha: ${_formatearFechaHora(test['fecha_realizacion'])} (${_tiempoTranscurrido(test['fecha_realizacion'])})',
+                            ),
                             trailing: const Icon(Icons.visibility, color: Colors.blue),
                             onTap: () async {
                               await _mostrarResultadoIndividual(test['id']);
