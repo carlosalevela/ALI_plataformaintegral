@@ -13,8 +13,11 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 import os
+from decouple import config, Csv
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+GROQ_API_KEY = config('GROQ_API_KEY')
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -48,6 +51,7 @@ INSTALLED_APPS = [
     'test_grado9',
     'test_grado_10_11',
     'django_extensions',
+    'django_celery_beat',
     'corsheaders'
 ]
 AUTH_USER_MODEL = 'Usuario.Usuario'
@@ -108,7 +112,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',  # Especifica que usarás MySQL
         'NAME': 'psicoorientacion_db',  # Nombre de la base de datos
         'USER': 'root',  # Usuario de MySQL (cámbialo si tienes otro)
-        'PASSWORD': 'lina2328',  # Pon la contraseña de MySQL
+        'PASSWORD': 'Volcano21!',  # Pon la contraseña de MySQL
         'HOST': 'localhost',  # O la IP del servidor si está en otro lado
         'PORT': '3306',  # Puerto por defecto de MySQL
     }
@@ -156,3 +160,15 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Celery
+CELERY_BROKER_URL = 'redis://localhost:6379'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+
+# Email
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'aliorientadora@gmail.com'
+EMAIL_HOST_PASSWORD = 'Volcano21!'

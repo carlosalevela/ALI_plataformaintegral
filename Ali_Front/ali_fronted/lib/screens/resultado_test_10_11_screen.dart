@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -5,9 +6,13 @@ import 'estudiante_home.dart';
 
 class ResultadoTest1011Screen extends StatefulWidget {
   final Map<String, String> respuestas;
+  final String resultado;
 
-  const ResultadoTest1011Screen({Key? key, required this.respuestas})
-      : super(key: key);
+  const ResultadoTest1011Screen({
+    Key? key,
+    required this.respuestas,
+    required this.resultado,
+  }) : super(key: key);
 
   @override
   State<ResultadoTest1011Screen> createState() => _ResultadoTest1011ScreenState();
@@ -16,7 +21,6 @@ class ResultadoTest1011Screen extends StatefulWidget {
 class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
     with TickerProviderStateMixin {
   late Map<String, double> porcentajes;
-  late String recomendacion;
   late IconData icono;
   late Color color;
 
@@ -38,7 +42,7 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
   void initState() {
     super.initState();
     calcularPorcentajes();
-    generarRecomendacion();
+    configurarIconoYColor(widget.resultado);
   }
 
   void calcularPorcentajes() {
@@ -57,36 +61,47 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
     };
   }
 
-  void generarRecomendacion() {
-    // Puedes personalizar esta lógica como quieras
-    final mayor = porcentajes.entries.reduce((a, b) => a.value > b.value ? a : b);
+  void configurarIconoYColor(String resultado) {
+    final carrera = resultado.toLowerCase();
 
-    switch (mayor.key) {
-      case 'A':
-        recomendacion = 'Tienes una fuerte pasión. Podrías explorar carreras como Medicina, Ingeniería o Psicología.';
-        icono = FontAwesomeIcons.heartPulse;
-        color = const Color(0xFF32D6A0);
-        break;
-      case 'B':
-        recomendacion = 'Tienes interés intelectual. Considera carreras como Derecho, Docencia o Programación.';
-        icono = FontAwesomeIcons.lightbulb;
-        color = const Color(0xFF5C8DF6);
-        break;
-      case 'C':
-        recomendacion = 'Evitas áreas que no te motivan. Explora nuevas experiencias para encontrar tu camino.';
-        icono = FontAwesomeIcons.faceFrown;
-        color = const Color(0xFFF57D7C);
-        break;
-      case 'D':
-        recomendacion = 'Quizás aún no descubres lo que te gusta. Prueba distintas actividades y explora tus intereses.';
-        icono = FontAwesomeIcons.circleQuestion;
-        color = const Color(0xFFEFC368);
-        break;
-      default:
-        recomendacion = 'Aún no hay una recomendación clara. ¡Sigue explorando!';
-        icono = FontAwesomeIcons.question;
-        color = Colors.grey;
+    if (carrera.contains('medicina')) {
+      icono = FontAwesomeIcons.userDoctor;
+      color = Colors.teal;
+    } else if (carrera.contains('ingeniería') || carrera.contains('ingenieria')) {
+      icono = FontAwesomeIcons.gears;
+      color = Colors.blueGrey;
+    } else if (carrera.contains('psicología') || carrera.contains('psicologia')) {
+      icono = FontAwesomeIcons.brain;
+      color = Colors.deepPurple;
+    } else if (carrera.contains('derecho')) {
+      icono = FontAwesomeIcons.scaleBalanced;
+      color = Colors.brown;
+    } else if (carrera.contains('educación') || carrera.contains('educacion')) {
+      icono = FontAwesomeIcons.bookOpen;
+      color = Colors.indigo;
+    } else if (carrera.contains('sistemas') || carrera.contains('software')) {
+      icono = FontAwesomeIcons.laptopCode;
+      color = Colors.blue;
+    } else if (carrera.contains('administración') || carrera.contains('administracion')) {
+      icono = FontAwesomeIcons.chartColumn;
+      color = Colors.green;
+    } else if (carrera.contains('contaduría') || carrera.contains('contaduria')) {
+      icono = FontAwesomeIcons.calculator;
+      color = Colors.cyan;
+    } else if (carrera.contains('diseño') || carrera.contains('diseno')) {
+      icono = FontAwesomeIcons.penNib;
+      color = Colors.pink;
+    } else if (carrera.contains('naturales')) {
+      icono = FontAwesomeIcons.leaf;
+      color = Colors.lightGreen;
+    } else {
+      icono = FontAwesomeIcons.question;
+      color = Colors.grey;
     }
+  }
+
+  String decodeUTF8(String texto) {
+    return utf8.decode(texto.runes.toList());
   }
 
   @override
@@ -104,14 +119,14 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
             Icon(icono, size: 60, color: color),
             const SizedBox(height: 16),
             Text(
-              'Recomendación de carrera',
+              'Carrera recomendada',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
             ),
             const SizedBox(height: 12),
             Text(
-              recomendacion,
+              decodeUTF8(widget.resultado), // ✅ Aquí se soluciona la codificación
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 30),
             SizedBox(

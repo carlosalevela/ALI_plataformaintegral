@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'resultado_test_10_11_screen.dart';
 import 'estudiante_home.dart';
 import 'dart:math' as math;
+import '../services/api_service.dart';
 
 class TestGrado1011Screen extends StatefulWidget {
   const TestGrado1011Screen({Key? key}) : super(key: key);
@@ -129,17 +130,38 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
   }
 
   void enviarTest() async {
-    await _borrarProgreso();
+  await _borrarProgreso();
+
+  // Transformar claves de pregunta_0 → pregunta_1 (hasta 40)
+  final respuestasTransformadas = <String, String>{};
+  for (int i = 0; i < respuestas.length; i++) {
+    final original = respuestas['pregunta_$i'];
+    if (original != null) {
+      respuestasTransformadas['pregunta_${i + 1}'] = original;
+    }
+  }
+
+  try {
+    final response = await ApiService().enviarTestGrado10y11(respuestasTransformadas);
+    final resultado = response['resultado'];
 
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => ResultadoTest1011Screen(
-          respuestas: respuestas,
+          respuestas: respuestasTransformadas,
+          resultado: resultado,
         ),
       ),
     );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error al enviar test: $e')),
+    );
   }
+}
+
+
 
   @override
   Widget build(BuildContext context) {
