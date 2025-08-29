@@ -1,2 +1,5 @@
 venv/
 .qodo
+.env
+*.env
+ali_backend/.env

@@ -1,20 +1,27 @@
 name: ali_fronted
-description: "A new Flutter project."
-publish_to: 'none'
+description: A new Flutter project.
+publish_to: "none"
 
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.5.3
+  sdk: ">=3.5.3 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  http: ^0.13.5
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+  http: ^1.4.0
   shared_preferences: ^2.2.2
-  font_awesome_flutter: ^10.7.0
   cupertino_icons: ^1.0.8
-  fl_chart: ^0.66.0    # <---- AGREGADO PARA EL PIE CHART ANIMADO
+  font_awesome_flutter: ^10.7.0
+  fl_chart: ^0.66.0
+  google_fonts: ^6.1.0
+  timeago: ^3.6.0
+  excel: ^2.1.0
+  file_saver: ^0.1.0
 
 dev_dependencies:
   flutter_test:
@@ -28,6 +35,8 @@ flutter:
     - assets/illustration_home.png
     - assets/fondo_home.png
     - assets/nino_home.png
+    - assets/students_studying.png
+    - assets/logo_ali.png
 
   fonts:
     - family: PatrickHand

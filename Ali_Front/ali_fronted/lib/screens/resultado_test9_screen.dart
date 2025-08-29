@@ -1,23 +1,22 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'estudiante_home.dart';
-import 'dart:math' as math;
 
 class ResultadoTest9Screen extends StatefulWidget {
   final String resultado;
-  final Map<String, double> porcentajes; // A, B, C, D
+  final Map<String, double> porcentajes;
   final IconData icono;
   final Color color;
 
   const ResultadoTest9Screen({
-    Key? key,
+    super.key,
     required this.resultado,
     required this.porcentajes,
     required this.icono,
     required this.color,
-  }) : super(key: key);
+  });
 
   @override
   State<ResultadoTest9Screen> createState() => _ResultadoTest9ScreenState();
@@ -25,471 +24,179 @@ class ResultadoTest9Screen extends StatefulWidget {
 
 class _ResultadoTest9ScreenState extends State<ResultadoTest9Screen>
     with TickerProviderStateMixin {
-  late AnimationController _appearController;
-  late AnimationController _btnController;
-  late Animation<double> _appearAnim;
-  late Animation<double> _chart3dAnim;
-  late Animation<double> _btnScaleAnim;
-  bool _isBtnPressed = false;
+  // --------------------- controladores de animación ---------------------
+  late final AnimationController _bounceCtl =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))
+        ..forward();
+  late final Animation<double> _bounceAnim =
+      CurvedAnimation(parent: _bounceCtl, curve: Curves.elasticOut);
 
-  final List<Color> _pieColors = [
-    Color(0xFF32D6A0),
-    Color(0xFF5C8DF6),
-    Color(0xFFF57D7C),
-    Color(0xFFEFC368),
-  ];
+  late final AnimationController _bgCtl =
+      AnimationController(vsync: this, duration: const Duration(seconds: 8))
+        ..repeat(reverse: true);
 
-  final List<String> _pieLabels = [
-    'Me gusta',
-    'Me interesa',
-    'No me gusta',
-    'No me interesa'
-  ];
-
-  final List<String> _pieEmojis = [
-    '😍',
-    '🤩',
-    '😕',
-    '😐',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _appearController = AnimationController(
-      duration: const Duration(milliseconds: 1400),
-      vsync: this,
-    )..forward();
-
-    _btnController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-      lowerBound: 0.0,
-      upperBound: 0.12,
-    );
-
-    _appearAnim = CurvedAnimation(parent: _appearController, curve: Curves.elasticOut);
-    _chart3dAnim = Tween<double>(begin: -math.pi / 2, end: 0)
-        .animate(CurvedAnimation(parent: _appearController, curve: Curves.easeOutBack));
-    _btnScaleAnim = Tween<double>(begin: 1.0, end: 0.90).animate(CurvedAnimation(
-      parent: _btnController,
-      curve: Curves.easeInOutBack,
-    ));
-  }
+  late final AnimationController _btnCtl =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 280), upperBound: .10);
 
   @override
   void dispose() {
-    _appearController.dispose();
-    _btnController.dispose();
+    _bounceCtl.dispose();
+    _bgCtl.dispose();
+    _btnCtl.dispose();
     super.dispose();
-  }
-
-  List<PieChartSectionData> _buildPieSections() {
-    final values = widget.porcentajes.values.toList();
-    return List.generate(_pieLabels.length, (i) {
-      return PieChartSectionData(
-        color: _pieColors[i % _pieColors.length].withOpacity(0.93),
-        value: values[i],
-        title: '',
-        radius: 62 + (values[i] > 0 ? 12 : 0),
-        badgeWidget: _buildBadge(_pieLabels[i], _pieColors[i], _pieEmojis[i], values[i]),
-        badgePositionPercentageOffset: 1.23,
-        showTitle: false,
-      );
-    });
-  }
-
-  Widget _buildBadge(String label, Color color, String emoji, double value) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(emoji, style: const TextStyle(fontSize: 23, height: 1)),
-        Container(
-          margin: const EdgeInsets.only(top: 2),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.93),
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.17),
-                blurRadius: 4,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: Text(
-            '${value.toStringAsFixed(1)}%',
-            style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBar(int i, double value) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: value),
-      duration: const Duration(milliseconds: 1200),
-      curve: Curves.easeOutCubic,
-      builder: (context, animValue, child) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7.0, horizontal: 2),
-        child: Row(
-          children: [
-            Text(_pieEmojis[i], style: const TextStyle(fontSize: 20)),
-            const SizedBox(width: 7),
-            SizedBox(
-              width: 95,
-              child: Text(
-                _pieLabels[i],
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-              ),
-            ),
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: animValue / 100,
-                  color: _pieColors[i],
-                  backgroundColor: _pieColors[i].withOpacity(0.15),
-                  minHeight: 14,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text('${value.toStringAsFixed(1)}%',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                )),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBookShape({
-    required double left,
-    required double top,
-    required double width,
-    required double height,
-    required double angle,
-    required Color color1,
-    required Color color2,
-    double opacity = 0.20,
-  }) {
-    return Positioned(
-      left: left,
-      top: top,
-      child: Opacity(
-        opacity: opacity,
-        child: Transform.rotate(
-          angle: angle,
-          child: Container(
-            width: width,
-            height: height,
-            child: CustomPaint(
-              painter: _BookPainter(color1: color1, color2: color2),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPremiumBackground(BuildContext context) {
-    // Fondo premium: solo tonos azules cálidos y libros difusos
-    return Stack(
-      children: [
-        // Degradado principal azules cálidos.
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFFB3E6FB),
-                Color(0xFFDCF3FF),
-                Color(0xFF77C8F8),
-                Color(0xFF4C9ED9),
-              ],
-              stops: [0.05, 0.5, 0.8, 1.0],
-            ),
-          ),
-        ),
-        // "Libros" en el fondo
-        _buildBookShape(
-          left: 30,
-          top: 30,
-          width: 150,
-          height: 70,
-          angle: -0.24,
-          color1: const Color(0xFF61A4FB),
-          color2: const Color(0xFFB3E6FB),
-          opacity: 0.19,
-        ),
-        _buildBookShape(
-          left: MediaQuery.of(context).size.width - 90,
-          top: 105,
-          width: 120,
-          height: 60,
-          angle: 0.18,
-          color1: const Color(0xFF2196F3),
-          color2: const Color(0xFFB3E6FB),
-          opacity: 0.14,
-        ),
-        _buildBookShape(
-          left: 60,
-          top: MediaQuery.of(context).size.height - 210,
-          width: 80,
-          height: 38,
-          angle: -0.12,
-          color1: const Color(0xFF0DD9F9),
-          color2: const Color(0xFFB3E6FB),
-          opacity: 0.16,
-        ),
-        _buildBookShape(
-          left: MediaQuery.of(context).size.width - 120,
-          top: MediaQuery.of(context).size.height - 100,
-          width: 90,
-          height: 36,
-          angle: 0.18,
-          color1: const Color(0xFF3EB9E7),
-          color2: const Color(0xFFDCF3FF),
-          opacity: 0.13,
-        ),
-      ],
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 700;
+    final textScale = MediaQuery.textScaleFactorOf(context);
+
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       body: Stack(
         children: [
-          _buildPremiumBackground(context),
-          Center(
+          // ------------------  FONDO CON ONDAS  ------------------
+          AnimatedBuilder(
+            animation: _bgCtl,
+            builder: (_, __) => CustomPaint(
+              painter: _WavePainter(_bgCtl.value),
+              size: MediaQuery.of(context).size,
+            ),
+          ),
+
+          // ------------------  CONTENIDO  ------------------
+          SafeArea(
             child: SingleChildScrollView(
-              child: FadeTransition(
-                opacity: _appearAnim,
-                child: ScaleTransition(
-                  scale: _appearAnim,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Card premium bien centrada, con sombra y glass.
-                        Container(
-                          width: 390,
-                          constraints: const BoxConstraints(maxWidth: 480),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _ShimmerText(
+                    text: 'Panel de Recomendación',
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall!
+                        .copyWith(fontWeight: FontWeight.w800, color: Colors.grey[900]!),
+                  ),
+                  const SizedBox(height: 6),
+                  Text('Encuentra la carrera técnica perfecta para ti',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(color: Colors.grey[600])),
+                  const SizedBox(height: 22),
+
+                  // ------------------  TARJETA GLASS  ------------------
+                  ScaleTransition(
+                    scale: _bounceAnim,
+                    child: _GlassCard(
+                      gradientColors: const [Color(0x661465bb), Color(0x660f4d8c)],
+                      child: Column(
+                        children: [
+                          Text('Técnico recomendado',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium!
+                                  .copyWith(color: Colors.white, fontWeight: FontWeight.w500)),
+                          const SizedBox(height: 14),
+                          Icon(widget.icono, color: Colors.white, size: 56),
+                          const SizedBox(height: 12),
+                          Text(widget.resultado,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall!
+                                  .copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 26),
+
+                  // ------------------  GRID ------------------
+                  GridView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: isWide ? 2 : 1,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: isWide ? 1.45 : 1.05,
+                    ),
+                    children: [
+                      _WhiteCard(
+                        title: 'Recomendación',
+                        child: Center(
+                          child: Text('🌟 Próximamente tips personalizados',
+                              style: TextStyle(
+                                  fontSize: 13 * textScale,
+                                  fontStyle: FontStyle.italic,
+                                  color: Colors.black45)),
+                        ),
+                      ),
+                      _WhiteCard(
+                        title: 'Estadísticas del Test',
+                        child: _StatsGrid(pct: widget.porcentajes),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 34),
+
+                  // ------------------  BOTÓN RENOVADO  ------------------
+                  Center(
+                    child: GestureDetector(
+                      onTapDown: (_) => _btnCtl.forward(),
+                      onTapCancel: () => _btnCtl.reverse(),
+                      onTapUp: (_) async {
+                        _btnCtl.reverse();
+                        final prefs = await SharedPreferences.getInstance();
+                        final id = prefs.getInt('user_id');
+                        if (id != null) {
+                          await prefs.remove('test_grado9_respuestas_$id');
+                        }
+                        if (mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (_) => const EstudianteHome()),
+                              (_) => false);
+                        }
+                      },
+                      child: AnimatedBuilder(
+                        animation: _btnCtl,
+                        builder: (_, child) =>
+                            Transform.scale(scale: 1 - _btnCtl.value, child: child),
+                        child: Container(
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(38),
-                            gradient: LinearGradient(
+                            borderRadius: BorderRadius.circular(40),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF1465bb), Color(0xFF0f4d8c)],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [
-                                Colors.white.withOpacity(0.80),
-                                Colors.white.withOpacity(0.97),
-                              ],
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: widget.color.withOpacity(0.14),
-                                blurRadius: 42,
-                                spreadRadius: 14,
-                              )
+                                  color: const Color(0xFF0f4d8c).withOpacity(.35),
+                                  blurRadius: 22,
+                                  offset: const Offset(0, 10))
                             ],
-                            border: Border.all(
-                              color: widget.color.withOpacity(0.18),
-                              width: 2,
-                            ),
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 30.0, vertical: 32),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(widget.icono,
-                                  color: widget.color, size: 60, shadows: [
-                                    Shadow(
-                                      color: widget.color.withOpacity(0.17),
-                                      blurRadius: 10)
-                                  ]),
-                                const SizedBox(height: 10),
-                                Text(
-                                  'Modalidad sugerida:',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    color: widget.color,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 900),
-                                  child: Text(
-                                    widget.resultado,
-                                    key: ValueKey(widget.resultado),
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w700,
-                                      color: widget.color,
-                                      fontFamily: 'Roboto',
-                                      letterSpacing: 0.3,
-                                      shadows: [
-                                        Shadow(
-                                          color: widget.color.withOpacity(0.12),
-                                          blurRadius: 4,
-                                        ),
-                                      ],
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                const SizedBox(height: 34),
-                                // Pie chart perfectamente centrado
-                                Center(
-                                  child: AnimatedBuilder(
-                                    animation: _chart3dAnim,
-                                    builder: (context, child) {
-                                      return Transform(
-                                        alignment: Alignment.center,
-                                        transform: Matrix4.identity()
-                                          ..setEntry(3, 2, 0.001)
-                                          ..rotateX(_chart3dAnim.value),
-                                        child: child,
-                                      );
-                                    },
-                                    child: SizedBox(
-                                      width: 245,
-                                      height: 245,
-                                      child: PieChart(
-                                        PieChartData(
-                                          sections: _buildPieSections(),
-                                          sectionsSpace: 3,
-                                          centerSpaceRadius: 56,
-                                          borderData: FlBorderData(show: false),
-                                        ),
-                                        swapAnimationDuration: const Duration(milliseconds: 1100),
-                                        swapAnimationCurve: Curves.elasticOut,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                Column(
-                                  children: List.generate(
-                                      4,
-                                      (i) => _buildBar(
-                                          i,
-                                          widget.porcentajes.values
-                                              .toList()[i])),
-                                ),
-                                const SizedBox(height: 32),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Text(
-                                      '¡Gracias por completar el test!',
-                                      style: TextStyle(
-                                        fontStyle: FontStyle.italic,
-                                        fontSize: 17,
-                                        letterSpacing: 0.2,
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text('🎉', style: TextStyle(fontSize: 25)),
-                                  ],
-                                ),
-                                const SizedBox(height: 30),
-                                Center(
-                                  child: GestureDetector(
-                                    onTapDown: (_) {
-                                      _btnController.forward();
-                                      setState(() => _isBtnPressed = true);
-                                    },
-                                    onTapUp: (_) async {
-                                      _btnController.reverse();
-                                      setState(() => _isBtnPressed = false);
-                                      final prefs =
-                                          await SharedPreferences.getInstance();
-                                      final userId = prefs.getInt('user_id');
-                                      if (userId != null) {
-                                        await prefs.remove(
-                                            'test_grado9_respuestas_$userId');
-                                      }
-                                      Navigator.of(context).pushAndRemoveUntil(
-                                        MaterialPageRoute(
-                                            builder: (context) =>
-                                                EstudianteHome()),
-                                        (Route<dynamic> route) => false,
-                                      );
-                                    },
-                                    onTapCancel: () {
-                                      _btnController.reverse();
-                                      setState(() => _isBtnPressed = false);
-                                    },
-                                    child: AnimatedBuilder(
-                                      animation: _btnScaleAnim,
-                                      builder: (context, child) {
-                                        return Transform.scale(
-                                          scale: _btnScaleAnim.value,
-                                          child: child,
-                                        );
-                                      },
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              widget.color.withOpacity(0.96),
-                                              widget.color.withOpacity(0.76),
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
-                                          borderRadius: BorderRadius.circular(28),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: widget.color.withOpacity(0.18),
-                                              blurRadius: 16,
-                                              offset: const Offset(0, 6),
-                                            ),
-                                          ],
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 38, vertical: 16),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: const [
-                                            FaIcon(FontAwesomeIcons.arrowLeftLong,
-                                                color: Colors.white, size: 22),
-                                            SizedBox(width: 12),
-                                            Text(
-                                              'Volver al inicio',
-                                              style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 18,
-                                                  letterSpacing: 0.2),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 46, vertical: 20),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const FaIcon(FontAwesomeIcons.houseChimney,
+                                color: Colors.white, size: 20),
+                            const SizedBox(width: 16),
+                            const Text('Volver al inicio',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 17)),
+                          ]),
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 16),
+                ],
               ),
             ),
           ),
@@ -499,55 +206,273 @@ class _ResultadoTest9ScreenState extends State<ResultadoTest9Screen>
   }
 }
 
-// Dibuja un "libro" estilizado y difuso
-class _BookPainter extends CustomPainter {
-  final Color color1;
-  final Color color2;
+// --------------------------------------------------------------------------
+//                              WIDGETS PRIVADOS
+// --------------------------------------------------------------------------
 
-  _BookPainter({required this.color1, required this.color2});
+class _GlassCard extends StatelessWidget {
+  final List<Color> gradientColors;
+  final Widget child;
+  const _GlassCard({required this.gradientColors, required this.child});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final Paint cover = Paint()
-      ..shader = LinearGradient(
-        colors: [color1, color2],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    final double radius = size.height * 0.25;
-
-    // Dibuja la portada del libro
-    final RRect bookRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, size.width, size.height * 0.82),
-      Radius.circular(radius),
-    );
-    canvas.drawRRect(bookRect, cover);
-
-    // Lomo central
-    final Paint spine = Paint()
-      ..color = Colors.white.withOpacity(0.16)
-      ..strokeWidth = size.width * 0.08
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(
-      Offset(size.width * 0.12, size.height * 0.1),
-      Offset(size.width * 0.12, size.height * 0.75),
-      spine,
-    );
-
-    // Simula páginas con líneas difusas
-    final Paint pages = Paint()
-      ..color = Colors.white.withOpacity(0.09)
-      ..strokeWidth = 2.5;
-    for (double y = size.height * 0.13; y < size.height * 0.7; y += 8) {
-      canvas.drawLine(
-        Offset(size.width * 0.17, y),
-        Offset(size.width * 0.82, y + 3),
-        pages,
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+              colors: gradientColors,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight),
+          borderRadius: BorderRadius.circular(26),
+          boxShadow: [
+            BoxShadow(
+                color: gradientColors.last.withOpacity(.35),
+                blurRadius: 24,
+                offset: const Offset(0, 10))
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+        child: child,
       );
-    }
+}
+
+class _WhiteCard extends StatefulWidget {
+  final String title;
+  final Widget child;
+  const _WhiteCard({required this.title, required this.child});
+  @override
+  State<_WhiteCard> createState() => _WhiteCardState();
+}
+
+class _WhiteCardState extends State<_WhiteCard> {
+  double _dy = 0;
+  void _setDy(double v) => setState(() => _dy = v);
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+        onEnter: (_) => _setDy(-6),
+        onExit: (_) => _setDy(0),
+        child: GestureDetector(
+          onTapDown: (_) => _setDy(-6),
+          onTapUp: (_) => _setDy(0),
+          onTapCancel: () => _setDy(0),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 260),
+            transform: Matrix4.translationValues(0, _dy, 0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(.06),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5))
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(widget.title,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium!
+                      .copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 16),
+              widget.child,
+            ]),
+          ),
+        ),
+      );
+}
+
+class _StatsGrid extends StatelessWidget {
+  final Map<String, double> pct;
+  const _StatsGrid({required this.pct});
+
+  @override
+  Widget build(BuildContext context) {
+    final Map<String, Color> col = {
+      'Me gusta': const Color(0xFF10B981),
+      'No me gusta': Colors.redAccent,
+      'Me interesa': const Color(0xFF0ea5e9),
+      'No me interesa': Colors.grey,
+    };
+
+    return Wrap(
+      alignment: WrapAlignment.center,
+      runSpacing: 18,
+      spacing: 18,
+      children: col.keys.map((k) {
+        return _CircleStat(
+          label: k,
+          color: col[k]!,
+          value: pct[k] ?? 0,
+          icon: k == 'Me gusta'
+              ? FontAwesomeIcons.thumbsUp
+              : k == 'No me gusta'
+                  ? FontAwesomeIcons.thumbsDown
+                  : k == 'Me interesa'
+                      ? FontAwesomeIcons.solidHeart
+                      : FontAwesomeIcons.star,
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _CircleStat extends StatelessWidget {
+  final String label;
+  final double value; // 0–100
+  final IconData icon;
+  final Color color;
+  const _CircleStat(
+      {required this.label,
+      required this.value,
+      required this.icon,
+      required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = value.clamp(0, 100) / 100;
+    const sz = 86.0;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: pct),
+          duration: const Duration(milliseconds: 900),
+          curve: Curves.easeOutBack,
+          builder: (_, v, __) => SizedBox(
+            width: sz,
+            height: sz,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // halo
+                Container(
+                  width: sz,
+                  height: sz,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient:
+                        RadialGradient(colors: [color.withOpacity(.15), Colors.white]),
+                  ),
+                ),
+                // arco
+                SizedBox(
+                  width: sz,
+                  height: sz,
+                  child: CircularProgressIndicator(
+                    value: v,
+                    strokeWidth: 8,
+                    backgroundColor: Colors.grey.withOpacity(.15),
+                    valueColor: AlwaysStoppedAnimation(color),
+                  ),
+                ),
+                // icono
+                FaIcon(icon, color: color, size: 22),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text('${value.toStringAsFixed(0)}%',
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: color, fontSize: 14)),
+        Text(label,
+            style: const TextStyle(fontSize: 10, color: Colors.black54)),
+      ],
+    );
+  }
+}
+
+class _ShimmerText extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+  const _ShimmerText({required this.text, required this.style});
+  @override
+  State<_ShimmerText> createState() => _ShimmerTextState();
+}
+
+class _ShimmerTextState extends State<_ShimmerText>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctl =
+      AnimationController(vsync: this, duration: const Duration(seconds: 2))
+        ..repeat();
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: _ctl,
+        builder: (_, __) {
+          final gradient = LinearGradient(
+            colors: [Colors.grey[300]!, Colors.grey[100]!, Colors.grey[300]!],
+            stops: const [0.2, 0.5, 0.8],
+            begin: Alignment(-1 + _ctl.value * 2, 0),
+            end: Alignment(-1 + _ctl.value * 2 + 1, 0),
+          );
+          return ShaderMask(
+            shaderCallback: gradient.createShader,
+            child: Text(widget.text,
+                style: widget.style,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+          );
+        });
+}
+
+class _WavePainter extends CustomPainter {
+  final double t;
+  _WavePainter(this.t);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final h = size.height;
+
+    // Onda 1
+    final path1 = Path()..moveTo(0, h * .25);
+    for (double x = 0; x <= size.width; x++) {
+      final y =
+          h * .25 + math.sin((x / size.width * 2 * math.pi) + t * 2 * math.pi) * 20;
+      path1.lineTo(x, y);
+    }
+    path1
+      ..lineTo(size.width, 0)
+      ..lineTo(0, 0)
+      ..close();
+
+    final paint1 = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0x331465bb), Color(0x330f4d8c)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, h));
+    canvas.drawPath(path1, paint1);
+
+    // Onda 2
+    final path2 = Path()..moveTo(0, h * .30);
+    for (double x = 0; x <= size.width; x++) {
+      final y = h * .30 +
+          math.sin((x / size.width * 2 * math.pi) + t * 2 * math.pi + math.pi) * 30;
+      path2.lineTo(x, y);
+    }
+    path2
+      ..lineTo(size.width, 0)
+      ..lineTo(0, 0)
+      ..close();
+
+    final paint2 = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0x221465bb), Color(0x220f4d8c)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, h));
+    canvas.drawPath(path2, paint2);
+  }
+
+  @override
+  bool shouldRepaint(covariant _WavePainter oldDelegate) => oldDelegate.t != t;
 }
