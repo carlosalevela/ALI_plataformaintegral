@@ -151,7 +151,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("¿Eliminar?"),
-        content: const Text("Esta acción no se puede deshacer."),
+        content: const Text("Esta acción no se puede deshacer!!"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancelar")),
           ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text("Eliminar")),
