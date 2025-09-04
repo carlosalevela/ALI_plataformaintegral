@@ -1,24 +1,29 @@
 from django.urls import path
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     LoginAPI,
     UsuarioAPI,
     UsuarioDetailAPI,
     GradesAPI,
     GradeDetailAPI,
+    
 )
 
 urlpatterns = [
     # ===== AUTH (JWT) =====
     # POST -> /Alipsicoorientadora/usuarios/login/
-    path('usuarios/login/', LoginAPI.as_view(), name='login'),
+    path('login/', LoginAPI.as_view(), name='login'),
 
-    # ===== USUARIOS =====
-    # GET  (solo admin)  -> /Alipsicoorientadora/usuarios/usuarios/
-    # POST (registro)    -> /Alipsicoorientadora/usuarios/usuarios/
-    path('usuarios/usuarios/', UsuarioAPI.as_view(), name='usuarios'),
+    path('registro/', UsuarioAPI.as_view(), name='registro'),
 
-    # GET/PUT/DELETE -> /Alipsicoorientadora/usuarios/usuarios/<id>/
-    path('usuarios/usuarios/<int:pkid>/', UsuarioDetailAPI.as_view(), name='usuario-detail'),
+    # 📌 Refrescar token
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    # 📌 Obtener todos los usuarios (Solo Admins)
+    path('usuarios/', UsuarioAPI.as_view(), name='lista_usuarios'),
+
+    # 📌 Obtener, editar o eliminar un usuario por ID
+    path('usuarios/<int:pkid>/', UsuarioDetailAPI.as_view(), name='detalle_usuario'),
 
     # ===== GRADOS =====
     # GET (auth) / POST (admin) -> /Alipsicoorientadora/grados/
