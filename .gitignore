@@ -3,3 +3,5 @@ venv/
 .env
 *.env
 ali_backend/.env
+__pycache__/
+*.pyc
