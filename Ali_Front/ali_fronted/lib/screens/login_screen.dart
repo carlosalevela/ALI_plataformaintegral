@@ -11,7 +11,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _emailController    = TextEditingController();
   final ApiService apiService = ApiService();
 
   bool _isLoading = false;
@@ -29,21 +29,19 @@ class _LoginScreenState extends State<LoginScreen> {
       _emailController.text.trim(),
     );
 
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() => _isLoading = false);
 
     if (result['success']) {
       final rol = result['role'];
       if (rol == 'admin') {
+        // ignore: use_build_context_synchronously
         Navigator.pushReplacementNamed(context, '/admin');
       } else {
+        // ignore: use_build_context_synchronously
         Navigator.pushReplacementNamed(context, '/estudiante');
       }
     } else {
-      setState(() {
-        _error = result['message'];
-      });
+      setState(() => _error = result['message']);
     }
   }
 
@@ -69,30 +67,76 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             child: Column(
               children: [
-                ClipPath(
-                  clipper: TopWaveClipper(),
-                  child: Container(
-                    width: double.infinity,
-                    height: 140,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF1E1E2F), Color(0xFF8DB9E4)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'Hola',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
+                // ---------- CABECERA + LOGO INTEGRADO ----------
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // Cabecera ondulada
+                    ClipPath(
+                      clipper: _TopWaveClipper(),
+                      child: Container(
+                        width: double.infinity,
+                        height: 160,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF1E1E2F), Color(0xFF8DB9E4)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Hola',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+
+                    // Logo superpuesto a la curva
+                    Positioned(
+                      bottom: -48, // la mitad del diámetro
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          width: 96,
+                          height: 96,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFF6FBFF), Color(0xFFE0ECFF)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(
+                                color: Colors.white, width: 4), // aro blanco
+                            boxShadow: const [
+                              BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4))
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Image.asset('assets/logo_ali.png',
+                                  fit: BoxFit.contain),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 72), // espacio para logo superpuesto
+
+                // ---------- TEXTOS DE BIENVENIDA ----------
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 24.0),
                   child: Align(
@@ -118,46 +162,29 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: TextField(
-                    controller: _usernameController,
-                    onSubmitted: (_) => _login(),
-                    decoration: InputDecoration(
-                      labelText: 'Usuario',
-                      prefixIcon: const Icon(Icons.person_outline),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
+
+                // ---------- CAMPOS ----------
+                _field(
+                  controller: _usernameController,
+                  label: 'Usuario',
+                  icon: Icons.person_outline,
                 ),
                 const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: TextField(
-                    controller: _emailController,
-                    onSubmitted: (_) => _login(),
-                    decoration: InputDecoration(
-                      labelText: 'Correo electrónico',
-                      prefixIcon: const Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
+                _field(
+                  controller: _emailController,
+                  label: 'Correo electrónico',
+                  icon: Icons.email_outlined,
                 ),
                 const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: TextField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    onSubmitted: (_) => _login(),
-                    decoration: InputDecoration(
-                      labelText: 'Contraseña',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
+                _field(
+                  controller: _passwordController,
+                  label: 'Contraseña',
+                  icon: Icons.lock_outline,
+                  obscure: true,
                 ),
                 const SizedBox(height: 24),
+
+                // ---------- BOTÓN ----------
                 _isLoading
                     ? const CircularProgressIndicator()
                     : Padding(
@@ -171,7 +198,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(18),
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
                             ),
                             child: const Text(
                               'INGRESAR',
@@ -181,16 +209,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                 const SizedBox(height: 12),
+
+                // ---------- ENLACE REGISTRO ----------
                 TextButton(
-                  onPressed: () => Navigator.pushNamed(context, '/register'),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, '/register'),
                   child: const Text(
                     "¿No tienes cuenta? Regístrate",
                     style: TextStyle(color: Colors.blueAccent),
                   ),
                 ),
+
+                // ---------- ERROR ----------
                 if (_error != null)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0, vertical: 8),
                     child: Text(
                       _error!,
                       style: const TextStyle(color: Colors.redAccent),
@@ -204,16 +238,44 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+
+  // helper para campos
+  Widget _field({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool obscure = false,
+  }) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: TextField(
+          controller: controller,
+          obscureText: obscure,
+          onSubmitted: (_) => _login(),
+          decoration: InputDecoration(
+            labelText: label,
+            prefixIcon: Icon(icon),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      );
 }
 
-class TopWaveClipper extends CustomClipper<Path> {
+// ============================================================
+//                 CLIPPER CABECERA ONDULADA
+// ============================================================
+class _TopWaveClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     final path = Path();
     path.lineTo(0, size.height - 40);
     path.quadraticBezierTo(
-      size.width / 2, size.height,
-      size.width, size.height - 40,
+      size.width / 2,
+      size.height,
+      size.width,
+      size.height - 40,
     );
     path.lineTo(size.width, 0);
     path.close();

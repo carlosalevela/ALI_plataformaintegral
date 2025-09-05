@@ -9,7 +9,7 @@ class RegisterScreen extends StatefulWidget {
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStateMixin {
+class _RegisterScreenState extends State<RegisterScreen> {
   final ApiService apiService = ApiService();
 
   final _formKey = GlobalKey<FormState>();
@@ -25,29 +25,10 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
   bool _isLoading = false;
   String? _message;
 
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    );
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  void _register() async {
+  /// ————————————————————————————————
+  /// REGISTRO
+  /// ————————————————————————————————
+  Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -64,36 +45,13 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
       "password": _password.text.trim(),
     });
 
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() => _isLoading = false);
+
+    if (!mounted) return;
 
     if (result['success']) {
-      if (!mounted) return;
-      _animationController.forward();
-
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => FadeTransition(
-          opacity: _fadeAnimation,
-          child: AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            backgroundColor: Colors.white,
-            title: const Text('🎉 ¡Registro Exitoso!', style: TextStyle(fontWeight: FontWeight.bold)),
-            content: const Text('Tu cuenta fue creada correctamente. Ahora puedes iniciar sesión.'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacementNamed(context, '/');
-                },
-                child: const Text('Iniciar sesión'),
-              ),
-            ],
-          ),
-        ),
-      );
+      // 🔄 Redirección inmediata al login
+      Navigator.pushReplacementNamed(context, '/');
     } else {
       setState(() {
         _message = "Error: ${result['message']}";
@@ -123,6 +81,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
             ),
             child: Column(
               children: [
+                /// Encabezado con onda decorativa
                 ClipPath(
                   clipper: TopWaveClipper(),
                   child: Container(
@@ -147,41 +106,44 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                     ),
                   ),
                 ),
+
+                /// Formulario
                 Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Form(
                     key: _formKey,
                     child: Column(
                       children: [
-                        // Campo Usuario
+                        // Usuario
                         TextFormField(
                           controller: _username,
                           onFieldSubmitted: (_) => _register(),
                           decoration: InputDecoration(
                             labelText: 'Usuario',
                             prefixIcon: const Icon(Icons.person),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           validator: (val) =>
                               val == null || val.trim().isEmpty ? 'Requerido' : null,
                         ),
                         const SizedBox(height: 16),
 
-                        // Campo Nombre completo (validación de nombre completo)
+                        // Nombre completo
                         TextFormField(
                           controller: _nombre,
                           onFieldSubmitted: (_) => _register(),
                           decoration: InputDecoration(
                             labelText: 'Nombre completo',
                             prefixIcon: const Icon(Icons.badge),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) {
                               return 'Requerido';
                             }
                             final partes = val.trim().split(' ');
-                            // Debe tener al menos dos palabras y cada palabra mínimo 2 caracteres
                             if (partes.length < 2 ||
                                 partes.any((p) => p.trim().length < 2)) {
                               return 'Ingrese nombre completo';
@@ -191,14 +153,15 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                         ),
                         const SizedBox(height: 16),
 
-                        // Campo Correo electrónico (con validación mínima)
+                        // Correo
                         TextFormField(
                           controller: _email,
                           onFieldSubmitted: (_) => _register(),
                           decoration: InputDecoration(
                             labelText: 'Correo electrónico',
                             prefixIcon: const Icon(Icons.email),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) {
@@ -209,19 +172,20 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                               return 'Correo inválido';
                             }
                             if (!email.toLowerCase().endsWith('@gmail.com')) {
-                              return 'Solo se aceptan correos @gmail.com';
+                              return 'Solo correos @gmail.com';
                             }
                             return null;
                           },
                         ),
                         const SizedBox(height: 16),
 
-                        // Campo Grado
+                        // Grado
                         DropdownButtonFormField<String>(
                           decoration: InputDecoration(
                             labelText: 'Grado',
                             prefixIcon: const Icon(Icons.school),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           value: _gradoSeleccionado,
                           items: gradosDisponibles.map((grado) {
@@ -230,35 +194,41 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                               child: Text('Grado $grado'),
                             );
                           }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _gradoSeleccionado = value;
-                            });
-                          },
-                          validator: (val) => val == null ? 'Seleccione un grado' : null,
+                          onChanged: (value) => setState(() {
+                            _gradoSeleccionado = value;
+                          }),
+                          validator: (val) =>
+                              val == null ? 'Seleccione un grado' : null,
                         ),
                         const SizedBox(height: 16),
 
-                        // Campo Edad
+                        // Edad
                         TextFormField(
                           controller: _edad,
                           keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
                           onFieldSubmitted: (_) => _register(),
                           decoration: InputDecoration(
                             labelText: 'Edad',
                             prefixIcon: const Icon(Icons.cake),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           validator: (val) {
-                            if (val == null || val.trim().isEmpty) return 'Requerido';
-                            if (int.tryParse(val.trim()) == null) return 'Debe ser un número válido';
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Requerido';
+                            }
+                            if (int.tryParse(val.trim()) == null) {
+                              return 'Debe ser un número válido';
+                            }
                             return null;
                           },
                         ),
                         const SizedBox(height: 16),
 
-                        // Campo Contraseña
+                        // Contraseña
                         TextFormField(
                           controller: _password,
                           obscureText: true,
@@ -266,7 +236,8 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                           decoration: InputDecoration(
                             labelText: 'Contraseña',
                             prefixIcon: const Icon(Icons.lock),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) {
@@ -280,7 +251,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                         ),
                         const SizedBox(height: 24),
 
-                        // Botón Registrar
+                        // Botón registrar
                         _isLoading
                             ? const CircularProgressIndicator()
                             : SizedBox(
@@ -291,7 +262,8 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                                   label: const Text('Registrar'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF8DB9E4),
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 14),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(20),
                                     ),
@@ -299,14 +271,16 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                                 ),
                               ),
 
-                        // Mensaje de resultado
+                        // Mensaje de error
                         if (_message != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 20),
                             child: Text(
                               _message!,
                               style: TextStyle(
-                                color: _message!.startsWith("Error") ? Colors.red : Colors.green,
+                                color: _message!.startsWith("Error")
+                                    ? Colors.red
+                                    : Colors.green,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -324,17 +298,16 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
   }
 }
 
+/// ClipPath para la cabecera ondulada
 class TopWaveClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
-    final path = Path();
-    path.lineTo(0, size.height - 40);
-    path.quadraticBezierTo(
-      size.width / 2, size.height,
-      size.width, size.height - 40,
-    );
-    path.lineTo(size.width, 0);
-    path.close();
+    final path = Path()
+      ..lineTo(0, size.height - 40)
+      ..quadraticBezierTo(
+          size.width / 2, size.height, size.width, size.height - 40)
+      ..lineTo(size.width, 0)
+      ..close();
     return path;
   }
 
