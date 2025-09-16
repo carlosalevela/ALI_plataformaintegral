@@ -310,4 +310,53 @@ class ApiService {
       throw Exception('Error al obtener resultado test 10/11: ${response.statusCode}');
     }
   }
+
+    // ➜ Agrega esto dentro de tu clase ApiService
+
+Future<List<Map<String, dynamic>>> listarMisTestsGrado9() async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('access_token');
+
+  final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado9/'); // GET list
+  final resp = await http.get(
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+  );
+
+  if (resp.statusCode == 200) {
+    final List data = jsonDecode(resp.body);
+    // Esperado: [{id, resultado, fecha_realizacion, ...}, ...]
+    return data.cast<Map<String, dynamic>>();
+  } else {
+    throw Exception('No se pudo cargar el historial (${resp.statusCode})');
+  }
+}
+
+Future<Map<String, dynamic>> obtenerResultadoTest9PorId(int testId) async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('access_token');
+
+  final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado9/resultado/$testId/');
+  final resp = await http.get(
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+  );
+
+  if (resp.statusCode == 200) {
+    final data = jsonDecode(resp.body);
+    return {'success': true, 'data': data};
+  } else {
+    return {
+      'success': false,
+      'error': 'No se pudo obtener el resultado ($testId): ${resp.statusCode}'
+    };
+  }
+}
+
 }

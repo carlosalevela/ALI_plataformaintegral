@@ -48,240 +48,407 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEAF0F6),
+      backgroundColor: const Color(0xFFF2F5FB),
       body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-          child: Container(
-            width: 380,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // ---------- CABECERA + LOGO INTEGRADO ----------
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    // Cabecera ondulada
-                    ClipPath(
-                      clipper: _TopWaveClipper(),
-                      child: Container(
-                        width: double.infinity,
-                        height: 160,
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Color(0xFF1E1E2F), Color(0xFF8DB9E4)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'Hola',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 920;
+            final wrapperWidth = isWide ? 980.0 : 420.0;
 
-                    // Logo superpuesto a la curva
-                    Positioned(
-                      bottom: -48, // la mitad del diámetro
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: Container(
-                          width: 96,
-                          height: 96,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFF6FBFF), Color(0xFFE0ECFF)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            border: Border.all(
-                                color: Colors.white, width: 4), // aro blanco
-                            boxShadow: const [
-                              BoxShadow(
-                                  color: Colors.black26,
-                                  blurRadius: 10,
-                                  offset: Offset(0, 4))
-                            ],
-                          ),
-                          child: ClipOval(
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Image.asset('assets/logo_ali.png',
-                                  fit: BoxFit.contain),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 72), // espacio para logo superpuesto
+            final content = isWide
+                ? Row(
+                    children: const [
+                      // --------- PANEL ILUSTRADO IZQUIERDO ---------
+                      Expanded(child: _IllustrationCard()),
+                      SizedBox(width: 24),
+                      // --------- FORMULARIO ---------
+                      Expanded(child: _LoginCardWrapper()),
+                    ],
+                  )
+                : const _LoginCardWrapper();
 
-                // ---------- TEXTOS DE BIENVENIDA ----------
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "Bienvenido de nuevo!",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "Solo un paso más para acceder a tu orientación vocacional.",
-                      style: TextStyle(color: Colors.black45),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // ---------- CAMPOS ----------
-                _field(
-                  controller: _usernameController,
-                  label: 'Usuario',
-                  icon: Icons.person_outline,
-                ),
-                const SizedBox(height: 16),
-                _field(
-                  controller: _emailController,
-                  label: 'Correo electrónico',
-                  icon: Icons.email_outlined,
-                ),
-                const SizedBox(height: 16),
-                _field(
-                  controller: _passwordController,
-                  label: 'Contraseña',
-                  icon: Icons.lock_outline,
-                  obscure: true,
-                ),
-                const SizedBox(height: 24),
-
-                // ---------- BOTÓN ----------
-                _isLoading
-                    ? const CircularProgressIndicator()
-                    : Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _login,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF8DB9E4),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            child: const Text(
-                              'INGRESAR',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ),
-                const SizedBox(height: 12),
-
-                // ---------- ENLACE REGISTRO ----------
-                TextButton(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, '/register'),
-                  child: const Text(
-                    "¿No tienes cuenta? Regístrate",
-                    style: TextStyle(color: Colors.blueAccent),
-                  ),
-                ),
-
-                // ---------- ERROR ----------
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24.0, vertical: 8),
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.redAccent),
-                    ),
-                  ),
-                const SizedBox(height: 20),
-              ],
-            ),
-          ),
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+              width: wrapperWidth,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              child: content,
+            );
+          },
         ),
       ),
     );
   }
+}
 
-  // helper para campos
-  Widget _field({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    bool obscure = false,
-  }) =>
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: TextField(
-          controller: controller,
-          obscureText: obscure,
-          onSubmitted: (_) => _login(),
-          decoration: InputDecoration(
-            labelText: label,
-            prefixIcon: Icon(icon),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+/// Wrapper que inyecta tus controladores/estado al card
+/// y aplica micro-animación de entrada (fade + slide).
+class _LoginCardWrapper extends StatelessWidget {
+  const _LoginCardWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.findAncestorStateOfType<_LoginScreenState>()!;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOutCubic,
+      builder: (context, t, child) => Transform.translate(
+        offset: Offset(0, (1 - t) * 22), // baja -> arriba
+        child: Opacity(opacity: t, child: child),
+      ),
+      child: _LoginCard(
+        usernameController: state._usernameController,
+        emailController: state._emailController,
+        passwordController: state._passwordController,
+        isLoading: state._isLoading,
+        error: state._error,
+        onLogin: state._login,
+      ),
+    );
+  }
+}
+
+/// ================== TARJETA DEL FORMULARIO (derecha / móvil) ==================
+class _LoginCard extends StatelessWidget {
+  const _LoginCard({
+    required this.usernameController,
+    required this.emailController,
+    required this.passwordController,
+    required this.isLoading,
+    required this.error,
+    required this.onLogin,
+  });
+
+  final TextEditingController usernameController;
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final bool isLoading;
+  final String? error;
+  final VoidCallback onLogin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: _cardDeco,
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Logo ALI arriba
+          CircleAvatar(
+            radius: 26,
+            backgroundColor: Colors.white,
+            child: Padding(
+              padding: const EdgeInsets.all(6.0),
+              child: Image.asset(
+                'assets/logo_ali.png',
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => Icon(
+                  Icons.school_outlined,
+                  color: Colors.blue.shade300,
+                  size: 28,
+                ),
+              ),
             ),
           ),
-        ),
-      );
-}
+          const SizedBox(height: 16),
+          Text(
+            'ALI ORIENTADOR VOCACIONAL',
+            style: TextStyle(
+              color: const Color(0xFF1C274C),
+              fontWeight: FontWeight.w700,
+              fontSize: 22,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Bienvenido de nuevo',
+            style: TextStyle(color: Colors.black.withOpacity(.55)),
+          ),
+          const SizedBox(height: 22),
 
-// ============================================================
-//                 CLIPPER CABECERA ONDULADA
-// ============================================================
-class _TopWaveClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-    path.lineTo(0, size.height - 40);
-    path.quadraticBezierTo(
-      size.width / 2,
-      size.height,
-      size.width,
-      size.height - 40,
+          _Input(
+            controller: emailController,
+            hint: 'Email',
+            icon: Icons.alternate_email,
+            onSubmit: onLogin,
+          ),
+          const SizedBox(height: 14),
+
+          // === Password con botón mostrar/ocultar ===
+          _PasswordInput(
+            controller: passwordController,
+            hint: 'Contraseña',
+            onSubmit: onLogin,
+          ),
+          const SizedBox(height: 14),
+
+          // Campo extra requerido por tu lógica (se mantiene)
+          _Input(
+            controller: usernameController,
+            hint: 'Usuario',
+            icon: Icons.person_outline,
+            onSubmit: onLogin,
+          ),
+
+          // === “¿Olvidaste tu contraseña?” debajo de Usuario ===
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {},
+              child: const Text('¿Olvidaste tu contraseña?'),
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: isLoading ? null : onLogin,
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 2,
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+              ),
+              child: Ink(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF376AED), Color(0xFF2F55D4)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Center(
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text(
+                          'Iniciar',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          GestureDetector(
+            onTap: () => Navigator.pushNamed(context, '/register'),
+            child: const Text(
+              'Registrarse',
+              style: TextStyle(
+                color: Color(0xFF2F55D4),
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.redAccent),
+            ),
+          ],
+
+          const SizedBox(height: 8),
+          Opacity(
+            opacity: .6,
+            child: Text(
+              '© 2025 ALI',
+              style: TextStyle(fontSize: 12, color: Colors.blueGrey.shade400),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
     );
-    path.lineTo(size.width, 0);
-    path.close();
-    return path;
   }
+}
+
+  /// ================== PANEL ILUSTRADO IZQUIERDO (centrado + burbujas) ==================
+class _IllustrationCard extends StatelessWidget {
+  const _IllustrationCard();
 
   @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: _cardDeco,
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFFFFFFF), Color(0xFFF6FAFF)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+            ),
+          ),
+          // Burbujas suaves
+          const Positioned(
+            top: 40, left: -30,
+            child: _Blob(size: 140, c1: Color(0xFFBFD7FF), c2: Color(0xFFE6F0FF)),
+          ),
+          const Positioned(
+            bottom: 60, right: -20,
+            child: _Blob(size: 160, c1: Color(0xFFD9E7FF), c2: Color(0xFFF2F7FF)),
+          ),
+          // Imagen centrada
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: FractionallySizedBox(
+                widthFactor: 0.86,
+                child: Image.asset(
+                  'assets/orientacion_vocacional.jpg',
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+class _Blob extends StatelessWidget {
+  const _Blob({required this.size, required this.c1, required this.c2});
+  final double size;
+  final Color c1, c2;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size, height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(colors: [c1, c2]),
+        boxShadow: [BoxShadow(color: c1.withOpacity(.35), blurRadius: 24, spreadRadius: 6)],
+      ),
+    );
+  }
+}
+
+/// ================== INPUTS ==================
+class _Input extends StatelessWidget {
+  const _Input({
+    required this.controller,
+    required this.hint,
+    required this.icon,
+    this.obscure = false,
+    required this.onSubmit,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final IconData icon;
+  final bool obscure;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      onSubmitted: (_) => onSubmit(),
+      decoration: InputDecoration(
+        hintText: hint,
+        prefixIcon: Icon(icon, color: Colors.blueGrey.shade400),
+        filled: true,
+        fillColor: const Color(0xFFFBFCFF),
+        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.blueGrey.shade100),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFF2F55D4), width: 1.6),
+        ),
+      ),
+    );
+  }
+}
+
+// Password con toggle (UI)
+class _PasswordInput extends StatefulWidget {
+  const _PasswordInput({
+    required this.controller,
+    required this.hint,
+    required this.onSubmit,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final VoidCallback onSubmit;
+
+  @override
+  State<_PasswordInput> createState() => _PasswordInputState();
+}
+
+class _PasswordInputState extends State<_PasswordInput> {
+  bool _obscure = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: widget.controller,
+      obscureText: _obscure,
+      onSubmitted: (_) => widget.onSubmit(),
+      decoration: InputDecoration(
+        hintText: widget.hint,
+        prefixIcon: Icon(Icons.lock_outline, color: Colors.blueGrey.shade400),
+        suffixIcon: IconButton(
+          tooltip: _obscure ? 'Mostrar contraseña' : 'Ocultar contraseña',
+          icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+          onPressed: () => setState(() => _obscure = !_obscure),
+        ),
+        filled: true,
+        fillColor: const Color(0xFFFBFCFF),
+        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.blueGrey.shade100),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFF2F55D4), width: 1.6),
+        ),
+      ),
+    );
+  }
+}
+
+final _cardDeco = BoxDecoration(
+  color: Colors.white,
+  borderRadius: BorderRadius.circular(22),
+  boxShadow: [
+    BoxShadow(
+      color: Colors.black.withOpacity(0.06),
+      blurRadius: 24,
+      offset: const Offset(0, 10),
+    ),
+  ],
+);

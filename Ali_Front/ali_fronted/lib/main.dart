@@ -8,6 +8,8 @@ import 'screens/admin_dashboard.dart';
 import 'screens/estudiante_home.dart';
 import 'screens/test_grado9_screen.dart';
 import 'screens/test_grado_10_11_screen.dart';
+import 'screens/historial_test_grado9_screen.dart';
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +58,8 @@ class MyApp extends StatelessWidget {
         '/estudiante':       (context) => const EstudianteHome(),
         '/test_grado9':      (context) => TestGrado9Page(),
         '/test_grado_10_11': (context) => TestGrado1011Screen(),
+        '/historial-test9': (context) => const HistorialTestGrado9Screen(),
+
       },
     );
   }

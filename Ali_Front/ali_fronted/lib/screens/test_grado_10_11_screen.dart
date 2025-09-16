@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'resultado_test_10_11_screen.dart';
 import 'estudiante_home.dart';
-import 'dart:math' as math;
+import 'dart:math' as math; // (ok dejarlo)
+import '../services/api_service.dart';
 
 class TestGrado1011Screen extends StatefulWidget {
   const TestGrado1011Screen({Key? key}) : super(key: key);
@@ -11,7 +12,9 @@ class TestGrado1011Screen extends StatefulWidget {
   State<TestGrado1011Screen> createState() => _TestGrado1011ScreenState();
 }
 
-class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerProviderStateMixin {
+class _TestGrado1011ScreenState extends State<TestGrado1011Screen>
+    with TickerProviderStateMixin {
+  // ------------------ LÓGICA (sin cambios) ------------------
   final List<String> preguntas = [
     '¿Te gustaría aprender cómo funciona el cuerpo humano para ayudar a otros?',
     '¿Disfrutas cuidar a personas enfermas o vulnerables?',
@@ -55,7 +58,7 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
     '¿Te atrae el pensamiento crítico y la búsqueda de evidencias?',
   ];
 
-  final Map<String, String> opciones = {
+  final Map<String, String> opciones = const {
     'A': 'Me gusta',
     'B': 'Me interesa',
     'C': 'No me gusta',
@@ -66,6 +69,7 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
   int preguntaActual = 0;
   bool mostrarModal = false;
 
+  // Colores (sin cambiar nombres)
   Color azulFondo = const Color(0xFF8db9e4);
   Color azulSeleccion = const Color(0xFF59bde9);
 
@@ -128,25 +132,93 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
     }
   }
 
-  void enviarTest() async {
-    await _borrarProgreso();
+  // *** Lógica de envío: SE MANTIENE tu versión con API y transformación ***
+      void enviarTest() async {
+  await _borrarProgreso();
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ResultadoTest1011Screen(
-          respuestas: respuestas,
-        ),
-      ),
-    );
+  final respuestasTransformadas = <String, String>{};
+  for (int i = 0; i < respuestas.length; i++) {
+    final original = respuestas['pregunta_$i'];
+    if (original != null) {
+      respuestasTransformadas['pregunta_${i + 1}'] = original;
+    }
   }
 
+  try {
+    final response = await ApiService().enviarTestGrado10y11(respuestasTransformadas);
+
+    if (response['success'] == true) {
+      final data = response['resultado']; // JSON/Map del backend
+      final carrera = _extraerCarreraSugerida(data); // <-- SOLO la etiqueta (String)
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ResultadoTest1011Screen(
+            respuestas: respuestasTransformadas,
+            resultado: carrera, // p. ej. "Agropecuaria"
+          ),
+        ),
+      );
+    } else {
+      throw Exception(response['message'] ?? 'Error desconocido');
+    }
+  } catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error al enviar test: $e')),
+    );
+  }
+}
+
+// Helper en TestGrado1011Screen (mismo que antes)
+String _extraerCarreraSugerida(dynamic data) {
+  if (data is String) return data.trim();
+  if (data is Map) {
+    for (final k in [
+      'carrera','carrera_sugerida','nombre_carrera','resultado','recomendacion',
+      'recomendación','tecnico','tecnico_sugerido','sugerencia','label','titulo','nombre'
+    ]) {
+      final v = data[k];
+      if (v is String && v.trim().isNotEmpty) return v.trim();
+    }
+    // opcional: búsqueda recursiva si viene muy anidado
+    String? best;
+    void walk(dynamic v) {
+      if (v == null) return;
+      if (v is String) {
+        final t = v.trim();
+        if (t.isNotEmpty && t.length <= 60 && !t.contains('{') && !t.contains('[')) {
+          best ??= t;
+        }
+      } else if (v is Map) {
+        for (final e in v.values) walk(e);
+      } else if (v is List) {
+        for (final e in v) walk(e);
+      }
+    }
+    walk(data);
+    return (best ?? '').trim();
+  }
+  if (data is List) {
+    for (final e in data) {
+      final s = _extraerCarreraSugerida(e);
+      if (s.isNotEmpty) return s;
+    }
+  }
+  return 'Resultado no disponible';
+}
+
+
+  // ------------------ DISEÑO (UI) ------------------
   @override
   Widget build(BuildContext context) {
     final pregunta = preguntas[preguntaActual];
     final respuestaSeleccionada = respuestas['pregunta_$preguntaActual'] ?? '';
-    double progreso = respuestas.length / preguntas.length;
+    final double progreso = respuestas.length / preguntas.length;
 
+    // Modal de confirmación (sin cambiar tu flujo)
     if (mostrarModal) {
       Future.microtask(() {
         setState(() => mostrarModal = false);
@@ -155,7 +227,8 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
           barrierDismissible: false,
           builder: (_) => AlertDialog(
             title: const Text('¿Enviar respuestas?'),
-            content: const Text('Una vez enviadas no podrás modificarlas. ¿Estás seguro?'),
+            content: const Text(
+                'Una vez enviadas no podrás modificarlas. ¿Estás seguro?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -179,7 +252,10 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
       backgroundColor: azulFondo,
       body: Stack(
         children: [
-          const Positioned.fill(child: _AnimatedBackground()),
+          // Fondo animado con íconos académicos
+          Positioned.fill(child: _AnimatedBackground()),
+
+          // Botón volver (mismo comportamiento)
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -190,98 +266,159 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
                   onPressed: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (_) => const EstudianteHome()),
+                      MaterialPageRoute(
+                          builder: (_) => const EstudianteHome()),
                     );
                   },
                 ),
               ),
             ),
           ),
+
+          // Card central con diseño moderno
           Center(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Container(
-                constraints: const BoxConstraints(maxWidth: 600),
+                constraints: const BoxConstraints(maxWidth: 720),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(32),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 10,
-                      offset: const Offset(0, 6),
+                      color: Colors.black.withOpacity(.12),
+                      blurRadius: 22,
+                      offset: const Offset(0, 10),
                     ),
                   ],
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 600),
+                  constraints: const BoxConstraints(maxHeight: 640),
                   child: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        LinearProgressIndicator(
-                          value: progreso,
-                          backgroundColor: Colors.grey[300],
-                          valueColor: AlwaysStoppedAnimation<Color>(azulFondo),
-                          minHeight: 8,
+                        // Barra de progreso
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: LinearProgressIndicator(
+                            value: progreso,
+                            backgroundColor: Colors.grey[200],
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(azulFondo),
+                            minHeight: 10,
+                          ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
                         Align(
                           alignment: Alignment.centerRight,
                           child: Text(
                             '${(progreso * 100).toStringAsFixed(0)}%',
                             style: TextStyle(
                               color: azulFondo,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Pregunta ${preguntaActual + 1} de ${preguntas.length}',
-                          style: TextStyle(
-                            color: azulFondo,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                        const SizedBox(height: 14),
+
+                        // Título pregunta
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Pregunta ${preguntaActual + 1}',
+                              style: TextStyle(
+                                color: azulFondo,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                            Text(
+                              'de ${preguntas.length}',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Enunciado
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.grey.withOpacity(.25),
+                            ),
+                          ),
+                          child: Text(
+                            pregunta,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 20),
-                        Text(
-                          pregunta,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 30),
+                        const SizedBox(height: 22),
+
+                        // Opciones
                         ...opciones.entries.map((opcion) {
-                          final estaSeleccionado = respuestaSeleccionada == opcion.key;
+                          final estaSeleccionado =
+                              respuestaSeleccionada == opcion.key;
+
                           return GestureDetector(
                             onTap: () {
                               setState(() {
-                                respuestas['pregunta_$preguntaActual'] = opcion.key;
+                                respuestas['pregunta_$preguntaActual'] =
+                                    opcion.key;
                               });
                               _guardarProgreso();
                             },
                             child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              margin: const EdgeInsets.symmetric(vertical: 6),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              duration: const Duration(milliseconds: 220),
+                              margin: const EdgeInsets.symmetric(vertical: 7),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
                               decoration: BoxDecoration(
-                                color: estaSeleccionado ? azulSeleccion : Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(20),
+                                color: estaSeleccionado
+                                    ? azulSeleccion
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(18),
                                 border: Border.all(
-                                  color: estaSeleccionado ? azulSeleccion : Colors.grey.shade300,
+                                  color: estaSeleccionado
+                                      ? azulSeleccion
+                                      : Colors.grey.shade300,
                                   width: 2,
                                 ),
+                                boxShadow: [
+                                  if (estaSeleccionado)
+                                    BoxShadow(
+                                      color: azulSeleccion.withOpacity(.25),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 8),
+                                    ),
+                                ],
                               ),
                               child: Row(
                                 children: [
                                   CircleAvatar(
-                                    backgroundColor: estaSeleccionado ? Colors.white : azulFondo,
+                                    radius: 18,
+                                    backgroundColor: estaSeleccionado
+                                        ? Colors.white
+                                        : azulFondo,
                                     child: Text(
                                       opcion.key,
                                       style: TextStyle(
-                                        color: estaSeleccionado ? azulSeleccion : Colors.white,
+                                        color: estaSeleccionado
+                                            ? azulSeleccion
+                                            : Colors.white,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -291,17 +428,25 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
                                     child: Text(
                                       opcion.value,
                                       style: TextStyle(
-                                        color: estaSeleccionado ? Colors.white : Colors.black87,
+                                        color: estaSeleccionado
+                                            ? Colors.white
+                                            : Colors.black87,
                                         fontSize: 16,
+                                        fontWeight: estaSeleccionado
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
                                       ),
                                     ),
-                                  )
+                                  ),
                                 ],
                               ),
                             ),
                           );
                         }).toList(),
-                        const SizedBox(height: 30),
+
+                        const SizedBox(height: 26),
+
+                        // Navegación
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -309,18 +454,30 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
                               ElevatedButton(
                                 onPressed: anteriorPregunta,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.grey,
+                                  backgroundColor: Colors.grey[500],
+                                  foregroundColor: Colors.white,
                                   shape: const StadiumBorder(),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 22, vertical: 14),
                                 ),
                                 child: const Text('Anterior'),
                               ),
                             ElevatedButton(
-                              onPressed: respuestaSeleccionada.isNotEmpty ? siguientePregunta : null,
+                              onPressed: respuestaSeleccionada.isNotEmpty
+                                  ? siguientePregunta
+                                  : null,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: azulFondo,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor:
+                                    azulFondo.withOpacity(.35),
                                 shape: const StadiumBorder(),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 22, vertical: 14),
                               ),
-                              child: Text(preguntaActual == preguntas.length - 1 ? 'Finalizar' : 'Siguiente'),
+                              child: Text(preguntaActual == preguntas.length - 1
+                                  ? 'Finalizar'
+                                  : 'Siguiente'),
                             ),
                           ],
                         ),
@@ -337,14 +494,16 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen> with TickerPr
   }
 }
 
+// ------------------ Fondo animado (diseño) ------------------
 class _AnimatedBackground extends StatefulWidget {
-  const _AnimatedBackground();
+  const _AnimatedBackground({super.key});
 
   @override
   State<_AnimatedBackground> createState() => _AnimatedBackgroundState();
 }
 
-class _AnimatedBackgroundState extends State<_AnimatedBackground> with TickerProviderStateMixin {
+class _AnimatedBackgroundState extends State<_AnimatedBackground>
+    with TickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _animation1;
   late final Animation<double> _animation2;
@@ -352,9 +511,17 @@ class _AnimatedBackgroundState extends State<_AnimatedBackground> with TickerPro
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(seconds: 10), vsync: this)..repeat(reverse: true);
-    _animation1 = Tween<double>(begin: 0, end: 20).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-    _animation2 = Tween<double>(begin: 0, end: -20).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _controller = AnimationController(
+      duration: const Duration(seconds: 10),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _animation1 = Tween<double>(begin: 0, end: 20).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    _animation2 = Tween<double>(begin: 0, end: -20).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -370,10 +537,42 @@ class _AnimatedBackgroundState extends State<_AnimatedBackground> with TickerPro
       builder: (_, __) {
         return Stack(
           children: [
-            Positioned(top: 100 + _animation1.value, left: 40, child: Icon(Icons.menu_book, size: 48, color: Colors.white.withOpacity(0.2))),
-            Positioned(bottom: 120 + _animation2.value, right: 60, child: Icon(Icons.computer, size: 48, color: Colors.white.withOpacity(0.2))),
-            Positioned(top: 220 + _animation2.value, right: 20, child: Icon(Icons.school, size: 48, color: Colors.white.withOpacity(0.15))),
-            Positioned(bottom: 40 + _animation1.value, left: 30, child: Icon(Icons.pedal_bike, size: 48, color: Colors.white.withOpacity(0.1))),
+            Positioned(
+              top: 100 + _animation1.value,
+              left: 40,
+              child: Icon(
+                Icons.menu_book,
+                size: 48,
+                color: Colors.white.withOpacity(0.2),
+              ),
+            ),
+            Positioned(
+              bottom: 120 + _animation2.value,
+              right: 60,
+              child: Icon(
+                Icons.computer,
+                size: 48,
+                color: Colors.white.withOpacity(0.2),
+              ),
+            ),
+            Positioned(
+              top: 220 + _animation2.value,
+              right: 20,
+              child: Icon(
+                Icons.school,
+                size: 48,
+                color: Colors.white.withOpacity(0.15),
+              ),
+            ),
+            Positioned(
+              bottom: 40 + _animation1.value,
+              left: 30,
+              child: Icon(
+                Icons.pedal_bike,
+                size: 48,
+                color: Colors.white.withOpacity(0.1),
+              ),
+            ),
           ],
         );
       },
