@@ -358,5 +358,50 @@ Future<Map<String, dynamic>> obtenerResultadoTest9PorId(int testId) async {
     };
   }
 }
+  Future<List<Map<String, dynamic>>> listarMisTestsGrado10y11() async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('access_token');
+
+  final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado10-11/');
+  final resp = await http.get(
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+  );
+
+  if (resp.statusCode == 200) {
+    final List data = jsonDecode(resp.body);
+    return data.cast<Map<String, dynamic>>();
+  } else {
+    throw Exception('No se pudo cargar el historial 10/11 (${resp.statusCode})');
+  }
+}
+
+Future<Map<String, dynamic>> obtenerResultadoTest1011PorId(int testId) async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('access_token');
+
+  final url = Uri.parse('http://127.0.0.1:8000/Alipsicoorientadora/tests-grado10-11/resultado/$testId/');
+  final resp = await http.get(
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+  );
+
+  if (resp.statusCode == 200) {
+    final data = jsonDecode(resp.body);
+    return {'success': true, 'data': data};
+  } else {
+    return {
+      'success': false,
+      'error': 'No se pudo obtener el resultado ($testId): ${resp.statusCode}'
+    };
+  }
+}
+
 
 }

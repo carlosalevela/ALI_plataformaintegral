@@ -9,6 +9,7 @@ import 'screens/estudiante_home.dart';
 import 'screens/test_grado9_screen.dart';
 import 'screens/test_grado_10_11_screen.dart';
 import 'screens/historial_test_grado9_screen.dart';
+import 'screens/historial_test_10_11_screen.dart';
 
 
 Future<void> main() async {
@@ -59,6 +60,7 @@ class MyApp extends StatelessWidget {
         '/test_grado9':      (context) => TestGrado9Page(),
         '/test_grado_10_11': (context) => TestGrado1011Screen(),
         '/historial-test9': (context) => const HistorialTestGrado9Screen(),
+        '/historial-test-10-11': (context) => const HistorialTestGrado1011Screen(),
 
       },
     );

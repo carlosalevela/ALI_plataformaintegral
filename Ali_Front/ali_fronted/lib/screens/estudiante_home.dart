@@ -73,17 +73,20 @@ class _EstudianteHomeState extends State<EstudianteHome>
                   children: [
                     const Spacer(),
 
-                    // NUEVO: botón "Historial" (glass)
+                    // ACTUALIZADO: botón "Historial" (glass) según grado
                     TinyGlassButton(
                       icon: Icons.history_edu_rounded,
-                      tooltip: 'Historial (Grado 9)',
+                      tooltip: 'Historial',
                       onTap: () {
-                        if (grado == '9') {
+                        final n = int.tryParse(grado) ?? 0;
+                        if (n == 9) {
                           Navigator.pushNamed(context, '/historial-test9');
+                        } else if (n >= 10) {
+                          Navigator.pushNamed(context, '/historial-test-10-11');
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('El historial por ahora está disponible para Grado 9'),
+                              content: Text('Configura tu grado para ver el historial.'),
                             ),
                           );
                         }
