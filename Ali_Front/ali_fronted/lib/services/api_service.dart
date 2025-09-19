@@ -402,6 +402,163 @@ Future<Map<String, dynamic>> obtenerResultadoTest1011PorId(int testId) async {
     };
   }
 }
+    // ===============================
+// PROGRESO: feeds y helpers (ADD)
+// ===============================
+
+// Lista general (admin) de tests 9° con filtros (?estado=&orden=&limit=&offset=)
+Future<List<Map<String, dynamic>>> fetchTestsGrado9({
+  String? estado,      // EN_PROGRESO | FINALIZADO
+  String? orden,       // actividad (usa fecha_ultima_actividad)
+  int? limit,          // si tu back usa LimitOffsetPagination
+  int? offset,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('access_token');
+
+  final q = <String, String>{};
+  if (estado != null && estado.isNotEmpty) q['estado'] = estado;
+  if (orden  != null && orden.isNotEmpty)  q['orden']  = orden;
+  if (limit  != null) q['limit']  = '$limit';
+  if (offset != null) q['offset'] = '$offset';
+
+  final uri = Uri.http('127.0.0.1:8000', '/Alipsicoorientadora/tests-grado9/', q);
+  final resp = await http.get(uri, headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $token',
+  });
+
+  if (resp.statusCode == 200) {
+    final data = jsonDecode(resp.body);
+    return (data as List).cast<Map<String, dynamic>>();
+  } else {
+    throw Exception('Error al listar tests 9° (${resp.statusCode})');
+  }
+}
+
+// Lista general (admin) de tests 10/11 con filtros (?estado=&orden=&limit=&offset=)
+Future<List<Map<String, dynamic>>> fetchTestsGrado10y11({
+  String? estado,      // EN_PROGRESO | FINALIZADO
+  String? orden,       // actividad
+  int? limit,
+  int? offset,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('access_token');
+
+  final q = <String, String>{};
+  if (estado != null && estado.isNotEmpty) q['estado'] = estado;
+  if (orden  != null && orden.isNotEmpty)  q['orden']  = orden;
+  if (limit  != null) q['limit']  = '$limit';
+  if (offset != null) q['offset'] = '$offset';
+
+  final uri = Uri.http('127.0.0.1:8000', '/Alipsicoorientadora/tests-grado10-11/', q);
+  final resp = await http.get(uri, headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $token',
+  });
+
+  if (resp.statusCode == 200) {
+    final data = jsonDecode(resp.body);
+    return (data as List).cast<Map<String, dynamic>>();
+  } else {
+    throw Exception('Error al listar tests 10/11 (${resp.statusCode})');
+  }
+}
+
+// Formatea una línea de progreso legible para la UI
+String _formatProgreso(Map<String, dynamic> t, {required int total}) {
+  final estado = t['estado']?.toString() ?? '';
+  final resp   = (t['respondidas'] as num?)?.toInt() ?? 0;
+  final ult    = (t['ultima_pregunta'] as num?)?.toInt() ?? 0;
+  final pct    = (t['progreso_pct'] as num?)?.toDouble() ?? (total > 0 ? (resp / total) * 100 : 0);
+
+  if (estado == 'FINALIZADO') return 'Finalizado';
+  if (estado == 'EN_PROGRESO') return 'En progreso: $resp/$total (P$ult) ${pct.toStringAsFixed(0)}%';
+  return '—';
+}
+
+// Devuelve el mejor test para pintar progreso (prefiere EN_PROGRESO reciente; si no, el último finalizado)
+Map<String, dynamic>? _pickBestTestForUser(
+  List<Map<String, dynamic>> feed,
+  int userId,
+) {
+  final mine = feed.where((t) => t['usuario'] == userId).toList();
+  if (mine.isEmpty) return null;
+
+  // Prioriza EN_PROGRESO (asume feed ya viene ordenado si usas orden=actividad)
+  final enProg = mine.where((t) => t['estado'] == 'EN_PROGRESO').toList();
+  if (enProg.isNotEmpty) return enProg.first;
+
+  // Si no hay en progreso, toma el más reciente por fecha_realizacion
+  mine.sort((a, b) => (b['fecha_realizacion'] ?? '').toString().compareTo((a['fecha_realizacion'] ?? '').toString()));
+  return mine.first;
+}
+
+// ===============================
+// ENDPOINTS DE ALTO NIVEL (ADD)
+// ===============================
+
+// ➜ Progreso consolidado para un usuario de 9°
+//   - Busca en feed EN_PROGRESO (orden actividad) y cae a "por usuario" si no hay en progreso
+//   - Retorna { progreso, ultimaRecomendacion, testId }
+Future<Map<String, dynamic>> progresoUsuarioGrado9(int userId, {int total = 40}) async {
+  try {
+    // 1) Feed EN_PROGRESO ordenado por actividad (admin)
+    final feedProg = await fetchTestsGrado9(estado: 'EN_PROGRESO', orden: 'actividad', limit: 200, offset: 0);
+    Map<String, dynamic>? best = _pickBestTestForUser(feedProg, userId);
+
+    // 2) Si no hay, cae al endpoint por usuario (ya lo tienes)
+    if (best == null) {
+      final testsUsr = await fetchTestsGrado9PorUsuario(userId);
+      if (testsUsr.isNotEmpty) {
+        // vienen ya ordenados por -fecha_realizacion desde el back
+        best = Map<String, dynamic>.from(testsUsr.first);
+      }
+    }
+
+    if (best == null) return {'progreso': '—', 'ultimaRecomendacion': '—', 'testId': null};
+
+    final progreso = _formatProgreso(best, total: total);
+    final String ultimaRec = (best['resultado'] as String?) ?? '—';
+
+    return {
+      'progreso': progreso,
+      'ultimaRecomendacion': ultimaRec,
+      'testId': best['id'],
+    };
+  } catch (_) {
+    return {'progreso': '—', 'ultimaRecomendacion': '—', 'testId': null};
+  }
+}
+
+// ➜ Progreso consolidado para un usuario de 10/11
+Future<Map<String, dynamic>> progresoUsuarioGrado10y11(int userId, {int total = 40}) async {
+  try {
+    final feedProg = await fetchTestsGrado10y11(estado: 'EN_PROGRESO', orden: 'actividad', limit: 200, offset: 0);
+    Map<String, dynamic>? best = _pickBestTestForUser(feedProg, userId);
+
+    if (best == null) {
+      final testsUsr = await fetchTestsGrado10y11PorUsuario(userId);
+      if (testsUsr.isNotEmpty) {
+        best = Map<String, dynamic>.from(testsUsr.first);
+      }
+    }
+
+    if (best == null) return {'progreso': '—', 'ultimaRecomendacion': '—', 'testId': null};
+
+    final progreso = _formatProgreso(best, total: total);
+    final String ultimaRec = (best['resultado'] as String?) ?? '—';
+
+    return {
+      'progreso': progreso,
+      'ultimaRecomendacion': ultimaRec,
+      'testId': best['id'],
+    };
+  } catch (_) {
+    return {'progreso': '—', 'ultimaRecomendacion': '—', 'testId': null};
+  }
+}
 
 
 }

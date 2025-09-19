@@ -1,11 +1,10 @@
 // admin_dashboard.dart
 //
-// ✅ ACTUALIZADO 24‑Jul‑2025
-//  • Exportar Excel usa alias `ex` (evita conflicto con Border).
-//  • Side color literal arreglado.
-//  • Mantiene ~940 líneas y toda la lógica previa intacta.
+// ✅ ACTUALIZADO 24-Jul-2025 (con estadísticas reales)
+//  • Reemplaza listas estáticas por datos del backend (_tec/_car).
+//  • Botón refresh recarga estadísticas.
+//  • Se conserva el resto de la lógica/UI intacta.
 //
-
 // ignore_for_file: depend_on_referenced_packages
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -41,13 +40,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
     '11': [],
   };
 
-  // ───────────────────────── ui‑state
+  // ───────────────────────── ui-state
   bool _isLoading = true;
   String _activeSection = 'dashboard';
   bool _studentsDropdownOpen = false;
   String _selectedDashboardGrade = '9';
   String _selectedStudentsGrade = '9';
   String _searchTerm = '';
+
+  // ── NUEVO: datos dinámicos para el gráfico
+  List<Map<String, dynamic>> _tec = []; // Técnicos (Grado 9)
+  List<Map<String, dynamic>> _car = []; // Carreras (10/11)
+  bool _loadingStats = false;
 
   // ───────────────────────── init
   @override
@@ -83,19 +87,55 @@ class _AdminDashboardState extends State<AdminDashboard> {
         final usr = Map<String, dynamic>.from(u);
         usr['estado'] = usr['estado'] ?? 'Activo';
 
-        if (usr['grado'] == 9) {
-          final tests = await apiService.fetchTestsGrado9PorUsuario(usr['id']);
-          usr['ultimaRecomendacion'] = tests.isNotEmpty
-              ? (await apiService.fetchResultadoTest9PorId(tests.first['id']))['resultado'] ?? '—'
-              : '—';
-        } else if (usr['grado'] == 10 || usr['grado'] == 11) {
-          final tests = await apiService.fetchTestsGrado10y11PorUsuario(usr['id']);
-          usr['ultimaRecomendacion'] = tests.isNotEmpty
-              ? (await apiService.fetchResultadoTest10y11PorId(tests.first['id']))['resultado'] ?? '—'
-              : '—';
-        } else {
-          usr['ultimaRecomendacion'] = '—';
+        // Helpers de formato
+        String _fmt(Map<String, dynamic> t, {required int total}) {
+          final estado = t['estado']?.toString() ?? '';
+          final resp   = (t['respondidas'] as num?)?.toInt() ?? 0;
+          final ult    = (t['ultima_pregunta'] as num?)?.toInt() ?? 0;
+          final pct    = (t['progreso_pct'] as num?)?.toDouble() ?? (total > 0 ? (resp / total) * 100 : 0);
+          if (estado == 'FINALIZADO') return 'Finalizado';
+          if (estado == 'EN_PROGRESO') return 'En progreso: $resp/$total (P$ult) ${pct.toStringAsFixed(0)}%';
+          return '—';
         }
+
+        // Grado 9
+        if (usr['grado'] == 9) {
+          final info = await apiService.progresoUsuarioGrado9(usr['id'], total: 40);
+          usr['progreso']            = info['progreso'] ?? '—';
+          usr['ultimaRecomendacion'] = info['ultimaRecomendacion'] ?? '—';
+
+          // Fallback por si quieres mantener el detalle
+          if (usr['ultimaRecomendacion'] == '—') {
+            final tests = await apiService.fetchTestsGrado9PorUsuario(usr['id']);
+            if (tests.isNotEmpty) {
+              final det = await apiService.fetchResultadoTest9PorId(tests.first['id']);
+              usr['ultimaRecomendacion'] = det['resultado'] ?? '—';
+              usr['progreso'] = usr['progreso'] == '—' ? _fmt(tests.first, total: 40) : usr['progreso'];
+            }
+          }
+          return usr;
+        }
+
+        // Grado 10/11
+        if (usr['grado'] == 10 || usr['grado'] == 11) {
+          final info = await apiService.progresoUsuarioGrado10y11(usr['id'], total: 40);
+          usr['progreso']            = info['progreso'] ?? '—';
+          usr['ultimaRecomendacion'] = info['ultimaRecomendacion'] ?? '—';
+
+          if (usr['ultimaRecomendacion'] == '—') {
+            final tests = await apiService.fetchTestsGrado10y11PorUsuario(usr['id']);
+            if (tests.isNotEmpty) {
+              final det = await apiService.fetchResultadoTest10y11PorId(tests.first['id']);
+              usr['ultimaRecomendacion'] = det['resultado'] ?? '—';
+              usr['progreso'] = usr['progreso'] == '—' ? _fmt(tests.first, total: 40) : usr['progreso'];
+            }
+          }
+          return usr;
+        }
+
+        // Otros grados
+        usr['progreso']            = '—';
+        usr['ultimaRecomendacion'] = '—';
         return usr;
       }
 
@@ -111,7 +151,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
     } catch (e) {
       debugPrint('Error al cargar usuarios: $e');
     }
-    if (mounted) setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() => _isLoading = false);
+      // 🚀 Cargar estadísticas reales para el gráfico
+      _cargarEstadisticas();
+    }
   }
 
   // ═════════════════════════════════ helpers
@@ -378,31 +422,78 @@ class _AdminDashboardState extends State<AdminDashboard> {
     ];
   }
 
-  // datos estáticos
-  final List<Map<String, dynamic>> _tec = const [
-    {'name': 'Industrial',       'count': 28},
-    {'name': 'Comercio',         'count': 22},
-    {'name': 'Promoción Social', 'count': 18},
-    {'name': 'Agropecuaria',     'count': 12},
-  ];
-  final List<Map<String, dynamic>> _car = const [
-    {'name': 'Ingeniería',         'count': 30},
-    {'name': 'Administración',     'count': 20},
-    {'name': 'Psicología',         'count': 15},
-    {'name': 'Derecho',            'count': 12},
-    {'name': 'Educación',          'count': 11},
-    {'name': 'Sistemas/Software',  'count': 10},
-    {'name': 'Contaduría',         'count':  8},
-    {'name': 'Diseño Gráfico',     'count':  7},
-    {'name': 'Ciencias Naturales', 'count':  6},
-  ];
+  // ─────────────── NUEVO: helpers de estadísticas reales
+  String _parseTecnico(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return 'Desconocido';
+    final s = raw;
+
+    // Formato nuevo: "Técnico sugerido por ALI: Comercio"
+    const tag = 'Técnico sugerido por ALI:';
+    final i = s.indexOf(tag);
+    if (i >= 0) {
+      final rest = s.substring(i + tag.length).trim();
+      final first = rest.split(RegExp(r'[\n\r]')).first.trim();
+      if (first.isNotEmpty) return first;
+    }
+
+    // Formatos antiguos (RF/KNN)
+    for (final op in ['Industrial','Comercio','Promoción Social','Agropecuaria']) {
+      if (s.contains(op)) return op;
+    }
+    return 'Desconocido';
+  }
+
+  Future<void> _cargarEstadisticas() async {
+    setState(() => _loadingStats = true);
+    try {
+      // 9° FINALIZADOS
+      final tests9 = await apiService.fetchTestsGrado9(
+        estado: 'FINALIZADO', orden: null, limit: 500, offset: 0,
+      );
+      final Map<String,int> cntTec = {
+        'Industrial':0, 'Comercio':0, 'Promoción Social':0, 'Agropecuaria':0,
+      };
+      for (final t in tests9) {
+        final tec = _parseTecnico(t['resultado']?.toString());
+        if (cntTec.containsKey(tec)) cntTec[tec] = (cntTec[tec] ?? 0) + 1;
+      }
+      final tecList = cntTec.entries
+          .map((e)=>{'name': e.key, 'count': e.value})
+          .toList()
+        ..sort((a,b)=> (b['count'] as int).compareTo(a['count'] as int));
+
+      // 10/11 FINALIZADOS
+      final tests1011 = await apiService.fetchTestsGrado10y11(
+        estado: 'FINALIZADO', orden: null, limit: 1000, offset: 0,
+      );
+      final Map<String,int> cntCar = {};
+      for (final t in tests1011) {
+        final car = (t['resultado']?.toString().trim().isEmpty ?? true)
+            ? 'Desconocido'
+            : t['resultado'].toString().trim();
+        cntCar[car] = (cntCar[car] ?? 0) + 1;
+      }
+      final carList = cntCar.entries
+          .map((e)=>{'name': e.key, 'count': e.value})
+          .toList()
+        ..sort((a,b)=> (b['count'] as int).compareTo(a['count'] as int));
+
+      if (mounted) setState(() { _tec = tecList; _car = carList; });
+    } catch (e) {
+      debugPrint('Error cargando estadísticas: $e');
+    } finally {
+      if (mounted) setState(() => _loadingStats = false);
+    }
+  }
 
   // ═════════════════════════════════ dashboard
   Widget _renderDashboard() {
     final grade   = _selectedDashboardGrade;
     final metrics = _metricas(grade);
     final choices = grade == '9' ? _tec : _car;
-    final maxC    = choices.map<int>((e) => e['count']).reduce((a, b) => a > b ? a : b);
+    final maxC    = choices.isNotEmpty
+        ? choices.map<int>((e) => e['count'] as int).reduce((a, b) => a > b ? a : b)
+        : 1;
 
     final now = DateTime.now();
     final ini = DateTime(now.year, now.month, 1);
@@ -440,7 +531,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: sel ? const Color(0xFF0D4A8A) : Colors.transparent,
                         foregroundColor: sel ? Colors.white : Colors.grey[700],
-                        side: const BorderSide(color: Color(0xFFD1D5DB)), // ← color literal
+                        side: const BorderSide(color: Color(0xFFD1D5DB)),
                         elevation: 0,
                       ),
                       onPressed: () => setState(() => _selectedDashboardGrade = g),
@@ -512,9 +603,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           children: [
                             Text(grade == '9' ? 'Técnicos Elegidos' : 'Carreras Elegidas',
                                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                            IconButton(icon: const Icon(Icons.refresh, size: 20), onPressed: () {}),
+                            IconButton(
+                              icon: const Icon(Icons.refresh, size: 20),
+                              onPressed: _cargarEstadisticas, // ← recarga reales
+                            ),
                           ],
                         ),
+                        if (_loadingStats) const LinearProgressIndicator(minHeight: 2),
                         const SizedBox(height: 12),
                         for (final ch in choices)
                           Padding(
@@ -525,7 +620,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: LinearProgressIndicator(
-                                    value: (ch['count'] as int) / maxC,
+                                    value: (maxC == 0 ? 0 : (ch['count'] as int) / maxC),
                                     minHeight: 8,
                                   ),
                                 ),
@@ -533,6 +628,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 Text('${ch['count']}'),
                               ],
                             ),
+                          ),
+                        if (choices.isEmpty && !_loadingStats)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: Text('Sin datos aún', style: TextStyle(color: Colors.grey)),
                           ),
                       ],
                     ),
@@ -553,8 +653,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             const SizedBox(height: 12),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: calDays.map((d) {
-                                final isToday = d == now.day;
+                              children: List.generate(5, (idx) {
+                                final d = [for (int i=-2;i<=2;i++) i][idx] + now.day;
+                                final end = DateTime(now.year, now.month + 1, 0).day;
+                                final day = d < 1 ? 1 : (d > end ? end : d);
+                                final isToday = day == now.day;
                                 return ElevatedButton(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: isToday ? const Color(0xFF0D4A8A) : const Color(0xFFF9FAFB),
@@ -564,9 +667,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     padding: EdgeInsets.zero,
                                   ),
                                   onPressed: () {},
-                                  child: Text('$d'),
+                                  child: Text('$day'),
                                 );
-                              }).toList(),
+                              }),
                             ),
                           ],
                         ),
@@ -728,7 +831,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               ? Colors.white
                               : Colors.grey[700],
                           elevation: 0,
-                          side: const BorderSide(color: Color(0xFFD1D5DB)), // ← color literal
+                          side: const BorderSide(color: Color(0xFFD1D5DB)),
                         ),
                         onPressed: () =>
                             setState(() => _selectedStudentsGrade = g == '9' ? '9' : '10'),
