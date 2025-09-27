@@ -8,6 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.views import APIView
+from .groq_service import generar_explicacion_carrera  # 👈 nuevo import
+
 
 from .models import TestGrado10_11
 from .serializers import TestGrado10_11Serializer
@@ -54,7 +56,8 @@ def _finalizar_y_predecir(test_instance: TestGrado10_11):
     """
     Lógica de finalización cuando hay 40/40 válidas:
     - Predice carrera con tu modelo ya cargado
-    - Guarda resultado y marca FINALIZADO
+    - Genera explicación con Groq (estilo igual al de 9)
+    - Guarda resultado como TEXTO (compat con tu front y filtros)
     """
     respuestas = test_instance.respuestas or {}
     required = [f"pregunta_{i}" for i in range(1, TOTAL_PREGUNTAS_1011 + 1)]
@@ -63,6 +66,7 @@ def _finalizar_y_predecir(test_instance: TestGrado10_11):
     if not all(respuestas[k] in RESP_VALIDAS for k in required):
         return
 
+    # Array numérico para tu modelo
     input_data = np.array([
         LETRA_A_VALOR[respuestas[f"pregunta_{i}"]] for i in range(1, TOTAL_PREGUNTAS_1011 + 1)
     ]).reshape(1, -1)
@@ -70,7 +74,22 @@ def _finalizar_y_predecir(test_instance: TestGrado10_11):
     prediction = model.predict(input_data)
     carrera_predicha = CARRERA_MAP.get(int(prediction[0]), "Desconocido")
 
-    test_instance.resultado = carrera_predicha
+    # Respuestas codificadas 1..4 para Groq (mismo patrón que 9)
+    respuestas_codificadas = {
+        f"pregunta_{i}": LETRA_A_VALOR[respuestas[f"pregunta_{i}"]]
+        for i in range(1, TOTAL_PREGUNTAS_1011 + 1)
+    }
+
+    # Explicación Groq (NO cambia tu formato de guardado)
+    explicacion = generar_explicacion_carrera(carrera_predicha, respuestas_codificadas)
+
+    # Resultado final en TEXTO (como 9, mantienes front y filtros icontains)
+    resultado_completo = (
+        f"Carrera sugerida por ALI: {carrera_predicha}\n\n"
+        f"Explicación: {explicacion}"
+    )
+
+    test_instance.resultado = resultado_completo
     test_instance.estado = TestGrado10_11.ESTADO_FINALIZADO
     if not test_instance.fecha_realizacion:
         test_instance.fecha_realizacion = timezone.now()

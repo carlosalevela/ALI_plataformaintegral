@@ -10,12 +10,20 @@ class ResultadoTest9Screen extends StatefulWidget {
   final IconData icono;
   final Color color;
 
+  /// ✨ Opcionales (no rompen tu lógica)
+  final String? explicacion;           // breve párrafo
+  final List<String>? razones;         // bullets “¿Por qué creemos…?”
+  final VoidCallback? onVerMas;        // acción del botón “Ver más…”
+
   const ResultadoTest9Screen({
     super.key,
     required this.resultado,
     required this.porcentajes,
     required this.icono,
     required this.color,
+    this.explicacion,
+    this.razones,
+    this.onVerMas,
   });
 
   @override
@@ -48,8 +56,23 @@ class _ResultadoTest9ScreenState extends State<ResultadoTest9Screen>
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width >= 700;
+    final isWide = MediaQuery.of(context).size.width >= 900;
     final textScale = MediaQuery.textScaleFactorOf(context);
+
+    // Defaults suaves si no te pasan explicación/razones
+    final explicacion = widget.explicacion ??
+        'Vemos que tienes afinidad por actividades prácticas y contextos reales. '
+        'Este técnico encaja con tus intereses y fortalezas, y puede abrirte buenas oportunidades.';
+    final razones = widget.razones ??
+        [
+          'Conexión con tus gustos e intereses declarados en el test.',
+          'Actividades prácticas y de aprendizaje aplicado.',
+          'Oportunidades laborales estables y variadas.',
+        ];
+
+    // Barras que reflejan tu captura (“Me gusta” y “No me interesa”)
+    final mg = (widget.porcentajes['Me gusta'] ?? 0).clamp(0, 100);
+    final nmi = (widget.porcentajes['No me interesa'] ?? 0).clamp(0, 100);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -86,63 +109,224 @@ class _ResultadoTest9ScreenState extends State<ResultadoTest9Screen>
                           ?.copyWith(color: Colors.grey[600])),
                   const SizedBox(height: 22),
 
-                  // ------------------  TARJETA GLASS  ------------------
+                  // ------------------  TARJETA GLASS (hero) ------------------
                   ScaleTransition(
                     scale: _bounceAnim,
                     child: _GlassCard(
                       gradientColors: const [Color(0x661465bb), Color(0x660f4d8c)],
-                      child: Column(
-                        children: [
-                          Text('Técnico recomendado',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium!
-                                  .copyWith(color: Colors.white, fontWeight: FontWeight.w500)),
-                          const SizedBox(height: 14),
-                          Icon(widget.icono, color: Colors.white, size: 56),
-                          const SizedBox(height: 12),
-                          Text(widget.resultado,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineSmall!
-                                  .copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 26),
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Center(
+                              child: Text('Tu Carrera Técnica Sugerida',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium!
+                                      .copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Icono grande
+                                Container(
+                                  width: 64,
+                                  height: 64,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(.18),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Icon(widget.icono, color: Colors.white, size: 40),
+                                ),
+                                const SizedBox(width: 14),
+                                // Título + explicación
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        widget.resultado,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineSmall!
+                                            .copyWith(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w900,
+                                              height: 1.1,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        explicacion,
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                              color: Colors.white.withOpacity(.95),
+                                              height: 1.35,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
 
-                  // ------------------  GRID ------------------
-                  GridView(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: isWide ? 2 : 1,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: isWide ? 1.45 : 1.05,
-                    ),
-                    children: [
-                      _WhiteCard(
-                        title: 'Recomendación',
-                        child: Center(
-                          child: Text('🌟 Próximamente tips personalizados',
-                              style: TextStyle(
-                                  fontSize: 13 * textScale,
-                                  fontStyle: FontStyle.italic,
-                                  color: Colors.black45)),
+                            // ¿Por qué creemos que es para ti?
+                            Text(
+                              '¿Por qué creemos que es para ti?',
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...razones.map((r) => _BulletRow(text: r)).toList(),
+                            const SizedBox(height: 14),
+
+                            // Botón “Ver más”
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: _OutlinePillButton(
+                                label: 'Ver más sobre ${widget.resultado}',
+                                icon: FontAwesomeIcons.magnifyingGlass,
+                                onTap: widget.onVerMas,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      _WhiteCard(
-                        title: 'Estadísticas del Test',
-                        child: _StatsGrid(pct: widget.porcentajes),
-                      ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 34),
 
-                  // ------------------  BOTÓN RENOVADO  ------------------
+                  const SizedBox(height: 26),
+
+                  // ------------------  SECCIÓN ANALYSIS ------------------
+                  Text('El Análisis de tu Test',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700, color: Colors.grey[900])),
+                  const SizedBox(height: 14),
+
+                  // Grid 2 columnas (o 1 en móvil)
+                  LayoutBuilder(
+                    builder: (ctx, cns) => GridView(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: isWide ? 2 : 1,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: isWide ? 1.75 : 1.10,
+                      ),
+                      children: [
+                        // Próximos pasos
+                        _WhiteCard(
+                          title: 'Próximos Pasos',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _NextStepRow(
+                                icon: FontAwesomeIcons.bookOpenReader,
+                                text: 'Investiga el plan de estudios.',
+                              ),
+                              const SizedBox(height: 10),
+                              _NextStepRow(
+                                icon: FontAwesomeIcons.video,
+                                text: 'Mira un video de “Un día de vida” de este técnico.',
+                              ),
+                              const SizedBox(height: 10),
+                              _NextStepRow(
+                                icon: FontAwesomeIcons.locationDot,
+                                text: 'Explora instituciones cercanas que lo ofrezcan.',
+                              ),
+                              const SizedBox(height: 18),
+                              // Botón rehacer test (reusa tu lógica)
+                              Center(
+                                child: GestureDetector(
+                                  onTapDown: (_) => _btnCtl.forward(),
+                                  onTapCancel: () => _btnCtl.reverse(),
+                                  onTapUp: (_) async {
+                                    _btnCtl.reverse();
+                                    final prefs = await SharedPreferences.getInstance();
+                                    final id = prefs.getInt('user_id');
+                                    if (id != null) {
+                                      await prefs.remove('test_grado9_respuestas_$id');
+                                    }
+                                    if (mounted) {
+                                      Navigator.of(context).pushAndRemoveUntil(
+                                        MaterialPageRoute(builder: (_) => const EstudianteHome()),
+                                        (_) => false,
+                                      );
+                                    }
+                                  },
+                                  child: AnimatedBuilder(
+                                    animation: _btnCtl,
+                                    builder: (_, child) =>
+                                        Transform.scale(scale: 1 - _btnCtl.value, child: child),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(40),
+                                        color: const Color(0xFF0f4d8c),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: const [
+                                          Icon(Icons.refresh, color: Colors.white, size: 18),
+                                          SizedBox(width: 10),
+                                          Text('No me convence. Realizar de nuevo',
+                                              style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 13)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Resumen de intereses (barras)
+                        _WhiteCard(
+                          title: 'Tu Resumen de Intereses',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _BarStat(
+                                label: 'Me gusta',
+                                value: mg / 100,
+                                valueText: '${mg.toStringAsFixed(0)}%',
+                              ),
+                              const SizedBox(height: 12),
+                              _BarStat(
+                                label: 'No me interesa',
+                                value: nmi / 100,
+                                valueText: '${nmi.toStringAsFixed(0)}%',
+                                muted: true,
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Aunque algunas áreas no te interesaron, el ${mg.toStringAsFixed(0)}% indica una fuerte conexión con ${widget.resultado.toLowerCase()}.',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: Colors.black54, height: 1.35),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ------------------  BOTÓN “Volver al inicio” (se mantiene)
                   Center(
                     child: GestureDetector(
                       onTapDown: (_) => _btnCtl.forward(),
@@ -179,17 +363,13 @@ class _ResultadoTest9ScreenState extends State<ResultadoTest9Screen>
                                   offset: const Offset(0, 10))
                             ],
                           ),
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 46, vertical: 20),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const FaIcon(FontAwesomeIcons.houseChimney,
-                                color: Colors.white, size: 20),
-                            const SizedBox(width: 16),
-                            const Text('Volver al inicio',
+                          padding: const EdgeInsets.symmetric(horizontal: 46, vertical: 20),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: const [
+                            FaIcon(FontAwesomeIcons.houseChimney, color: Colors.white, size: 20),
+                            SizedBox(width: 16),
+                            Text('Volver al inicio',
                                 style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 17)),
+                                    color: Colors.white, fontWeight: FontWeight.w700, fontSize: 17)),
                           ]),
                         ),
                       ),
@@ -283,103 +463,126 @@ class _WhiteCardState extends State<_WhiteCard> {
       );
 }
 
-class _StatsGrid extends StatelessWidget {
-  final Map<String, double> pct;
-  const _StatsGrid({required this.pct});
-
+class _BulletRow extends StatelessWidget {
+  final String text;
+  const _BulletRow({required this.text});
   @override
-  Widget build(BuildContext context) {
-    final Map<String, Color> col = {
-      'Me gusta': const Color(0xFF10B981),
-      'No me gusta': Colors.redAccent,
-      'Me interesa': const Color(0xFF0ea5e9),
-      'No me interesa': Colors.grey,
-    };
-
-    return Wrap(
-      alignment: WrapAlignment.center,
-      runSpacing: 18,
-      spacing: 18,
-      children: col.keys.map((k) {
-        return _CircleStat(
-          label: k,
-          color: col[k]!,
-          value: pct[k] ?? 0,
-          icon: k == 'Me gusta'
-              ? FontAwesomeIcons.thumbsUp
-              : k == 'No me gusta'
-                  ? FontAwesomeIcons.thumbsDown
-                  : k == 'Me interesa'
-                      ? FontAwesomeIcons.solidHeart
-                      : FontAwesomeIcons.star,
-        );
-      }).toList(),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.check_circle, color: Color(0xFF34D399), size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: Colors.white, height: 1.35),
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
-class _CircleStat extends StatelessWidget {
+class _OutlinePillButton extends StatelessWidget {
   final String label;
-  final double value; // 0–100
   final IconData icon;
-  final Color color;
-  const _CircleStat(
-      {required this.label,
-      required this.value,
-      required this.icon,
-      required this.color});
+  final VoidCallback? onTap;
+  const _OutlinePillButton({required this.label, required this.icon, this.onTap});
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(40),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(40),
+            border: Border.all(color: Colors.white.withOpacity(.75), width: 1.2),
+            color: Colors.white.withOpacity(.08),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FaIcon(icon, color: Colors.white, size: 14),
+              const SizedBox(width: 10),
+              Text(label,
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12.5)),
+            ],
+          ),
+        ),
+      );
+}
+
+class _NextStepRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _NextStepRow({required this.icon, required this.text});
+  @override
+  Widget build(BuildContext context) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: const Color(0xFF1465bb)),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: const TextStyle(color: Colors.black87))),
+        ],
+      );
+}
+
+class _BarStat extends StatelessWidget {
+  final String label;
+  final double value;      // 0..1
+  final String valueText;  // “80%”
+  final bool muted;
+  const _BarStat({
+    required this.label,
+    required this.value,
+    required this.valueText,
+    this.muted = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final pct = value.clamp(0, 100) / 100;
-    const sz = 86.0;
-
+    final track = muted ? Colors.black12 : const Color(0xFFe6f0fb);
+    final fill = muted ? Colors.grey : const Color(0xFF1465bb);
     return Column(
-      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: pct),
-          duration: const Duration(milliseconds: 900),
-          curve: Curves.easeOutBack,
-          builder: (_, v, __) => SizedBox(
-            width: sz,
-            height: sz,
+        Row(
+          children: [
+            Text(label,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w600)),
+            const Spacer(),
+            Text(valueText,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: Colors.black54)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox(
+            height: 14,
             child: Stack(
-              alignment: Alignment.center,
               children: [
-                // halo
-                Container(
-                  width: sz,
-                  height: sz,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient:
-                        RadialGradient(colors: [color.withOpacity(.15), Colors.white]),
-                  ),
+                Container(color: track),
+                FractionallySizedBox(
+                  widthFactor: value.clamp(0, 1),
+                  child: Container(color: fill),
                 ),
-                // arco
-                SizedBox(
-                  width: sz,
-                  height: sz,
-                  child: CircularProgressIndicator(
-                    value: v,
-                    strokeWidth: 8,
-                    backgroundColor: Colors.grey.withOpacity(.15),
-                    valueColor: AlwaysStoppedAnimation(color),
-                  ),
-                ),
-                // icono
-                FaIcon(icon, color: color, size: 22),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 6),
-        Text('${value.toStringAsFixed(0)}%',
-            style: TextStyle(
-                fontWeight: FontWeight.bold, color: color, fontSize: 14)),
-        Text(label,
-            style: const TextStyle(fontSize: 10, color: Colors.black54)),
       ],
     );
   }

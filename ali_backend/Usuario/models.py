@@ -27,6 +27,7 @@ class Grade(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
+        db_table = "usuario_grade"
         unique_together = ("code", "section")
         ordering = ["code", "section"]
 
@@ -42,23 +43,33 @@ class Usuario(AbstractUser):
         choices=[("admin", "Admin"), ("estudiante", "Estudiante")],
         default="estudiante"
     )
-    # 🔵 Tu lógica actual (la mantenemos): 9 / 10 / 11
+    # 9 / 10 / 11 (tu lógica actual)
     grado = models.IntegerField(null=True, blank=True)
 
-    # 🟣 NUEVO opcional (no rompe nada): link “rico” al grado administrable
+    # Enlace opcional administrable al grado
     grade_ref = models.ForeignKey(
         Grade, null=True, blank=True, on_delete=models.SET_NULL, related_name="usuarios"
     )
 
     edad = models.IntegerField(null=True, blank=True)
 
-    groups = models.ManyToManyField(Group, related_name="usuario_groups", blank=True)
-    user_permissions = models.ManyToManyField(Permission, related_name="usuario_permissions", blank=True)
+    # Fijamos nombres M2M para coincidir con tus tablas existentes
+    groups = models.ManyToManyField(
+        Group, related_name="usuario_groups", blank=True,
+        db_table="usuario_usuario_groups"
+    )
+    user_permissions = models.ManyToManyField(
+        Permission, related_name="usuario_permissions", blank=True,
+        db_table="usuario_usuario_user_permissions"
+    )
 
     objects = UsuarioManager()
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
+
+    class Meta:
+        db_table = "usuario_usuario"
 
     def __str__(self):
         return self.email

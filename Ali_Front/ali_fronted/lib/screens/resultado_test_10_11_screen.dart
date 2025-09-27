@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // <- Para Clipboard y SnackBar
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'estudiante_home.dart';
 
 /// ResultadoTest1011Screen
-/// - Muestra SOLO la etiqueta de carrera (p. ej., "Diseño gráfico").
+/// - Muestra la carrera y AHORA también una explicación visible y elegante.
 /// - Arregla acentos/mojibake ("IngenierÃ­a" -> "Ingeniería").
 /// - Mantiene tus porcentajes A/B/C/D y el diseño actual.
 class ResultadoTest1011Screen extends StatefulWidget {
@@ -32,15 +33,24 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
   /// Etiqueta final ya limpia para mostrar (solo carrera)
   late String carreraLabel;
 
+  /// Explicación legible para el estudiante
+  late String explicacion;
+
   @override
   void initState() {
     super.initState();
     _calcularPorcentajes();
 
-    // Extrae SOLO la etiqueta de carrera desde el string crudo.
+    // Carrera sugerida (etiqueta)
     carreraLabel = _extractCareerLabel(widget.resultado).trim();
     if (carreraLabel.isEmpty) {
       carreraLabel = _pretty(widget.resultado).trim();
+    }
+
+    // Explicación (texto)
+    explicacion = _extractExplanation(widget.resultado).trim();
+    if (explicacion.isEmpty) {
+      explicacion = 'Pronto verás una explicación personalizada generada por ALI según tus intereses.';
     }
 
     _configurarIconoYColor(carreraLabel);
@@ -169,6 +179,89 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
     return s.length <= 60 ? s : s.substring(0, 60);
   }
 
+  /// ----------- NUEVO: extrae la explicación legible del resultado -----------
+  String _extractExplanation(String raw) {
+    final s = _pretty(raw).trim();
+    if (s.isEmpty) return '';
+
+    // JSON: busca campos comunes
+    if ((s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'))) {
+      try {
+        final dec = jsonDecode(s);
+
+        String findInMap(Map m) {
+          for (final k in [
+            'explicacion','explicación','justificacion','justificación',
+            'detalle','motivo','razon','razón','explanation','why','mensaje'
+          ]) {
+            final v = m[k];
+            if (v is String && v.trim().isNotEmpty) return _pretty(v);
+          }
+          // Algunas APIs anidan la explicación en 'resultado' u 'output'
+          for (final k in ['resultado','output','data','response']) {
+            final v = m[k];
+            if (v is Map) {
+              final got = findInMap(v);
+              if (got.isNotEmpty) return got;
+            }
+          }
+          // Si viene como lista
+          for (final v in m.values) {
+            if (v is List) {
+              for (final e in v) {
+                if (e is Map) {
+                  final got = findInMap(e);
+                  if (got.isNotEmpty) return got;
+                } else if (e is String && e.trim().length > 20) {
+                  // primer párrafo decente
+                  return _pretty(e.trim());
+                }
+              }
+            }
+          }
+          return '';
+        }
+
+        if (dec is Map) {
+          final got = findInMap(dec);
+          if (got.isNotEmpty) return got;
+        } else if (dec is List) {
+          for (final e in dec) {
+            if (e is Map) {
+              final got = findInMap(e);
+              if (got.isNotEmpty) return got;
+            } else if (e is String && e.trim().length > 20) {
+              return _pretty(e.trim());
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Texto plano: intenta "Explicación: ...", toma el resto del párrafo
+    final lines = s.split(RegExp(r'\r?\n'));
+    final joined = lines.join('\n');
+    final expIdx = _norm(joined).indexOf('explicacion');
+    if (expIdx != -1) {
+      final after = joined.substring(expIdx);
+      final colon = after.indexOf(':');
+      if (colon != -1 && colon + 1 < after.length) {
+        final text = after.substring(colon + 1).trim();
+        if (text.isNotEmpty) return _pretty(text);
+      }
+    }
+
+    // Fallback: quita la primera línea si parece la carrera y usa el resto
+    if (lines.isNotEmpty && _looksLikeCareer(lines.first)) {
+      final rest = lines.skip(1).join(' ').trim();
+      if (rest.length > 15) return _pretty(rest);
+    }
+
+    // Último recurso: si todo el string luce como párrafo explicativo
+    if (!_looksLikeCareer(s) && s.length > 20) return _pretty(s);
+    return '';
+  }
+
   void _configurarIconoYColor(String resultadoEtiqueta) {
     final carrera = _norm(resultadoEtiqueta);
     if (carrera.contains('medicina')) {
@@ -282,7 +375,7 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
                   ),
                   const SizedBox(height: 26),
 
-                  // Grid
+                  // Grid (mantiene tu estructura)
                   GridView(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -290,7 +383,8 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
                       crossAxisCount: isWide ? 2 : 1,
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
-                      childAspectRatio: isWide ? 1.45 : 1.05,
+                      // Un poco más alto para que la explicación no se corte
+                      childAspectRatio: isWide ? 1.35 : 1.02,
                     ),
                     children: [
                       _WhiteCard(
@@ -313,6 +407,60 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
                                 _ChipTag(text: _decodeUTF8(carreraLabel), color: accentColor),
                               ],
                             ),
+                            const SizedBox(height: 14),
+
+                            // -------- BLOQUE EXPLICACIÓN (nuevo) ----------
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1465bb).withOpacity(.04),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFF1465bb).withOpacity(.20)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const FaIcon(FontAwesomeIcons.solidLightbulb, size: 16, color: primary1),
+                                      const SizedBox(width: 8),
+                                      Text('Explicación',
+                                          style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                                            color: const Color(0xFF0f4d8c), fontWeight: FontWeight.w800)),
+                                      const Spacer(),
+                                      TextButton.icon(
+                                        onPressed: () async {
+                                          await Clipboard.setData(ClipboardData(text: _decodeUTF8(explicacion)));
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Explicación copiada')),
+                                            );
+                                          }
+                                        },
+                                        icon: const Icon(Icons.copy, size: 16),
+                                        label: const Text('Copiar'),
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                      )
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _ExpandableText(
+                                    text: _decodeUTF8(explicacion),
+                                    maxLines: 4,
+                                    textStyle: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                                      height: 1.35, color: Colors.black87),
+                                    moreLabel: 'Ver más',
+                                    lessLabel: 'Ver menos',
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // -------- FIN EXPLICACIÓN ----------
                           ],
                         ),
                       ),
@@ -354,7 +502,7 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            boxShadow: [BoxShadow(color: primary2.withOpacity(.35), blurRadius: 22, offset: const Offset(0, 10))],
+                            boxShadow: [BoxShadow(color: primary2.withOpacity(.35), blurRadius: 22, offset: Offset(0, 10))],
                           ),
                           padding: const EdgeInsets.symmetric(horizontal: 46, vertical: 20),
                           child: const Row(
@@ -426,7 +574,7 @@ class _WhiteCardState extends State<_WhiteCard> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 14, offset: const Offset(0, 5))],
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 14, offset: Offset(0, 5))],
             ),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
             child: Column(
@@ -552,8 +700,7 @@ class _CircleStat extends StatelessWidget {
         const SizedBox(height: 6),
         Text('${value.toStringAsFixed(0)}%',
             style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 14)),
-        const Text('',
-            style: TextStyle(fontSize: 10, color: Colors.transparent)), // separador mínimo
+        const Text('', style: TextStyle(fontSize: 10, color: Colors.transparent)), // separador mínimo
         Text(label, style: const TextStyle(fontSize: 10, color: Colors.black54)),
       ],
     );
@@ -642,6 +789,57 @@ class _WavePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _WavePainter oldDelegate) => oldDelegate.t != t;
+}
+
+// ---------------- Texto expandible ----------------
+class _ExpandableText extends StatefulWidget {
+  final String text;
+  final int maxLines;
+  final TextStyle? textStyle;
+  final String moreLabel;
+  final String lessLabel;
+  const _ExpandableText({
+    required this.text,
+    this.maxLines = 4,
+    this.textStyle,
+    this.moreLabel = 'Ver más',
+    this.lessLabel = 'Ver menos',
+  });
+
+  @override
+  State<_ExpandableText> createState() => _ExpandableTextState();
+}
+
+class _ExpandableTextState extends State<_ExpandableText> {
+  bool expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = widget.textStyle ?? Theme.of(context).textTheme.bodyMedium!;
+    final text = widget.text.trim();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AnimatedCrossFade(
+          firstChild: Text(text, style: style, maxLines: widget.maxLines, overflow: TextOverflow.ellipsis),
+          secondChild: Text(text, style: style),
+          crossFadeState: expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 220),
+        ),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: () => setState(() => expanded = !expanded),
+          child: Text(
+            expanded ? widget.lessLabel : widget.moreLabel,
+            style: style.copyWith(
+              color: const Color(0xFF1465bb),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 // ---------------- Extensión útil ----------------
