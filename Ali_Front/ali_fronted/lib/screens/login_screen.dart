@@ -34,16 +34,75 @@ class _LoginScreenState extends State<LoginScreen> {
     if (result['success']) {
       final rol = result['role'];
       if (rol == 'admin') {
-        // ignore: use_build_context_synchronously
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/admin');
       } else {
-        // ignore: use_build_context_synchronously
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/estudiante');
       }
     } else {
       setState(() => _error = result['message']);
     }
   }
+
+  // ======= NUEVO: flujo "¿Olvidaste tu contraseña?" =======
+  void _forgotPassword() async {
+    final emailCtrl = TextEditingController(text: _emailController.text.trim());
+
+    final result = await showDialog<Map<String, dynamic>?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        bool sending = false;
+        return StatefulBuilder(
+          builder: (ctx, setState) => AlertDialog(
+            title: const Text('Recuperar contraseña'),
+            content: TextField(
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(hintText: 'Correo registrado'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: sending ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: sending
+                    ? null
+                    : () async {
+                        final email = emailCtrl.text.trim();
+                        if (email.isEmpty) return;
+
+                        setState(() => sending = true);
+                        final resp = await apiService.solicitarRecuperacion(email);
+                        if (ctx.mounted) Navigator.pop(ctx, resp);
+                      },
+                child: sending
+                    ? const SizedBox(
+                        height: 18, width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Enviar enlace'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted || result == null) return;
+
+    final ok = result['success'] == true;
+    final msg = (result['detail'] ?? result['message'] ?? (ok
+        ? 'Si el correo existe, te enviamos un enlace.'
+        : 'No se pudo enviar el enlace.')) as String;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+    );
+  }
+  // ========================================================
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +163,7 @@ class _LoginCardWrapper extends StatelessWidget {
         isLoading: state._isLoading,
         error: state._error,
         onLogin: state._login,
+        onForgot: state._forgotPassword, // <-- NUEVO
       ),
     );
   }
@@ -118,6 +178,7 @@ class _LoginCard extends StatelessWidget {
     required this.isLoading,
     required this.error,
     required this.onLogin,
+    required this.onForgot, // <-- NUEVO
   });
 
   final TextEditingController usernameController;
@@ -126,6 +187,7 @@ class _LoginCard extends StatelessWidget {
   final bool isLoading;
   final String? error;
   final VoidCallback onLogin;
+  final VoidCallback onForgot; // <-- NUEVO
 
   @override
   Widget build(BuildContext context) {
@@ -197,7 +259,7 @@ class _LoginCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {},
+              onPressed: onForgot, // <-- conectado
               child: const Text('¿Olvidaste tu contraseña?'),
             ),
           ),

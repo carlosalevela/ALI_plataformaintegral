@@ -10,10 +10,13 @@ import 'screens/test_grado9_screen.dart';
 import 'screens/test_grado_10_11_screen.dart';
 import 'screens/historial_test_grado9_screen.dart';
 import 'screens/historial_test_10_11_screen.dart';
+import 'screens/reset_password_screen.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  setUrlStrategy(PathUrlStrategy());
 
   // Carga datos de localización para español.
   // Si más adelante usas otros idiomas, repite con su código
@@ -55,12 +58,14 @@ class MyApp extends StatelessWidget {
       routes: {
         '/':                 (context) => const LoginScreen(),
         '/register':         (context) => const RegisterScreen(),
+        '/recuperacion/contrasena-confirmada': (ctx) => const ResetPasswordScreen(),
         '/admin':            (context) => const AdminDashboard(),
         '/estudiante':       (context) => const EstudianteHome(),
         '/test_grado9':      (context) => TestGrado9Page(),
         '/test_grado_10_11': (context) => TestGrado1011Screen(),
         '/historial-test9': (context) => const HistorialTestGrado9Screen(),
         '/historial-test-10-11': (context) => const HistorialTestGrado1011Screen(),
+        
 
       },
     );

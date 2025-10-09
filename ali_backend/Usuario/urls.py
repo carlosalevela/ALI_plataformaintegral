@@ -6,6 +6,8 @@ from .views import (
     UsuarioDetailAPI,
     GradesAPI,
     GradeDetailAPI,
+    SetNewPasswordView,
+    PasswordResetRequestView,
     
 )
 
@@ -31,4 +33,8 @@ urlpatterns = [
 
     # GET (auth) / PUT/DELETE (admin) -> /Alipsicoorientadora/grados/<id>/
     path('grados/<int:pkid>/', GradeDetailAPI.as_view(), name='grado-detail'),
+
+    path('recuperaracion/contraseña/', PasswordResetRequestView.as_view(), name='password-reset'),
+
+    path('recuperacion/contraseña-confirmada', SetNewPasswordView.as_view(), name='password-reset-confirm'),
 ]

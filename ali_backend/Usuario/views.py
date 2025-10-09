@@ -6,12 +6,31 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from .serializers import PasswordResetRequestSerializer, SetNewPasswordSerializer
+from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+
+import logging
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+
+# ===== IMPORTS EXTRA PARA RESET PASSWORD =====
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import smart_bytes, force_str
+
 from Usuario.models import Usuario, Grade  # ajusta si Grade está en otra app
 from Usuario.serializers import (
     UsuarioSerializer,
     GradeSerializerMini,     # admin (completo)
     PublicGradeSerializer,   # no admin (recortado)
 )
+
+# ==========================
+#  LOGGING / AUTH UTILS
+# ==========================
+logger = logging.getLogger(__name__)
+User = get_user_model()
+token_generator = PasswordResetTokenGenerator()
 
 # ==========================
 #  AUTH (JWT) con claims extra
@@ -239,3 +258,116 @@ class GradeDetailAPI(APIView):
         g = self.get_object(pkid)
         g.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ==========================
+#  RESET PASSWORD
+# ==========================
+class PasswordResetRequestView(APIView):
+    """
+    POST /auth/password-reset/
+    body: { "email": "usuario@correo.com" }
+    """
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        # 1) Validar entrada
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].strip()
+
+        # 2) Buscar usuario (sin revelar existencia)
+        try:
+            user = User.objects.filter(email__iexact=email, is_active=True).first()
+        except Exception:
+            logger.exception("Error buscando usuario por email")
+            user = None
+
+        if not user:
+            # Siempre 200 para no filtrar si el correo existe
+            return Response(
+                {"detail": "Si el correo existe en nuestro sistema, enviaremos un enlace para restablecer la contraseña."},
+                status=status.HTTP_200_OK
+            )
+
+        # 3) Generar uid/token y armar el enlace (USANDO ORIGIN DEL FRONT SI LLEGA)
+        uidb64 = urlsafe_base64_encode(smart_bytes(user.pk))
+        token = token_generator.make_token(user)
+
+        # ----- BLOQUE NUEVO: origin dinámico + fallback -----
+        client_origin = request.data.get("origin")  # ej: "http://localhost:51988"
+        allowed = getattr(settings, "PASSWORD_RESET_ALLOWED_ORIGINS", [])
+
+        if client_origin in allowed:
+            origin = client_origin.rstrip("/")
+        else:
+            origin = getattr(settings, "FRONTEND_ORIGIN", "http://localhost:5173").rstrip("/")
+
+        path = getattr(settings, "FRONTEND_RESET_PATH", "/#/reset-password")
+        reset_link = f"{origin}{path}?uid={uidb64}&token={token}"
+        # ----- FIN BLOQUE NUEVO -----
+
+        # 4) Construir email (texto + HTML)
+        subject = "Recuperación de contraseña - ALI"
+        text = (
+            "Hola,\n\n"
+            "Recibimos una solicitud para restablecer tu contraseña.\n"
+            f"Usa este enlace:\n{reset_link}\n\n"
+            "Si no fuiste tú, ignora este correo."
+        )
+        html = f"""
+            <p>Hola,</p>
+            <p>Recibimos una solicitud para restablecer tu contraseña.</p>
+            <p><a href="{reset_link}" target="_blank">Haz clic aquí para restablecerla</a></p>
+            <p>Si no fuiste tú, ignora este correo.</p>
+        """
+
+        # 5) Enviar (sin silenciar errores para ver el problema real en consola)
+        from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None) or settings.EMAIL_HOST_USER
+        msg = EmailMultiAlternatives(subject, text, from_email, [email])
+        msg.attach_alternative(html, "text/html")
+        msg.send(fail_silently=False)
+
+        # 6) En DEBUG devolvemos datos útiles para pruebas
+        if settings.DEBUG:
+            return Response(
+                {"detail": "Correo enviado (DEBUG).", "uid": uidb64, "token": token, "reset_link": reset_link},
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            {"detail": "Si el correo existe en nuestro sistema, enviaremos un enlace para restablecer la contraseña."},
+            status=status.HTTP_200_OK
+        )
+
+
+class SetNewPasswordView(APIView):
+    """
+    POST /auth/password-reset/confirm/
+    body: { "uid": "<uidb64>", "token": "<token>", "password": "NuevaPass123" }
+    """
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        ser = SetNewPasswordSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        uidb64 = ser.validated_data["uid"]
+        token = ser.validated_data["token"]
+        new_password = ser.validated_data["new_password"]
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid, is_active=True)
+        except Exception:
+            logger.exception("UID inválido en reset de contraseña")
+            return Response({"detail": "Enlace inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not token_generator.check_token(user, token):
+            return Response({"detail": "Token inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+        return Response({"detail": "Contraseña actualizada correctamente."}, status=status.HTTP_200_OK)

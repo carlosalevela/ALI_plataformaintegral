@@ -75,12 +75,13 @@ CORS_ALLOW_ALL_ORIGINS = True
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    
 ]
 
 ROOT_URLCONF = 'ali_backend.urls'
@@ -165,10 +166,29 @@ CELERY_BROKER_URL = 'redis://localhost:6379'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
-# Email
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'aliorientadora@gmail.com'
-EMAIL_HOST_PASSWORD = 'Volcano21!'
+
+# ========================
+# Email / Password reset
+# ========================
+
+# Email / SMTP (Gmail con App Password)
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_USE_SSL = False  # con puerto 587 no se usa SSL
+
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='aliorientadora@gmail.com')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='ALI Soporte <no-reply@tu-dominio.com>')
+
+# Dominio del sitio
+SITE_DOMAIN = config('SITE_DOMAIN', default='localhost:8000')
+
+# Link completo hacia la pantalla de reset en el frontend (desde tu .env)
+FRONTEND_RESET_URL = config('FRONTEND_RESET_URL', default='')
+
+# Tiempo de validez del token de reset (segundos)
+PASSWORD_RESET_TIMEOUT = config('PASSWORD_RESET_TIMEOUT', default=86400, cast=int)
+
+FRONTEND_RESET_PATH = "/recuperacion/contrasena-confirmada"

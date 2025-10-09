@@ -1,5 +1,11 @@
 from rest_framework import serializers
 from Usuario.models import Usuario, Grade
+from django.contrib.auth import get_user_model
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import smart_bytes
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from rest_framework import serializers
 
 # 👇 para admins (respuesta “rica”)
 class GradeSerializerMini(serializers.ModelSerializer):
@@ -85,3 +91,43 @@ class UsuarioSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         instance.save()
         return instance
+
+
+User = get_user_model()
+token_generator = PasswordResetTokenGenerator()
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        # No revelamos si existe o no el correo
+        return value
+
+
+class SetNewPasswordSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(min_length=8, write_only=True)
+
+    def validate(self, attrs):
+        uid = attrs.get("uid")
+        token = attrs.get("token")
+        try:
+            user_id = force_str(urlsafe_base64_decode(uid))
+            user = User.objects.get(pk=user_id)
+        except Exception:
+            raise serializers.ValidationError({"uid": "UID inválido."})
+
+        if not token_generator.check_token(user, token):
+            raise serializers.ValidationError({"token": "Token inválido o expirado."})
+
+        attrs["user"] = user
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.validated_data["user"]
+        new_password = self.validated_data["new_password"]
+        user.set_password(new_password)
+        user.save()
+        return user

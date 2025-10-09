@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+
 class ApiService {
   final String baseUrl = "http://127.0.0.1:8000/Alipsicoorientadora/usuarios";
 
@@ -559,6 +560,80 @@ Future<Map<String, dynamic>> progresoUsuarioGrado10y11(int userId, {int total = 
     return {'progreso': '—', 'ultimaRecomendacion': '—', 'testId': null};
   }
 }
+
+// ============ RECUPERAR CONTRASEÑA ============
+
+/// 1) Solicitar enlace de recuperación
+Future<Map<String, dynamic>> solicitarRecuperacion(String email) async {
+  // OJO: en tu urls.py está escrito con doble "ra": "recuperaracion"
+  final url = Uri.parse('$baseUrl/recuperaracion/contraseña/');
+
+  try {
+    final resp = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email.trim()}),
+    );
+
+    // El backend responde 200 siempre (no revela si existe el correo)
+    if (resp.statusCode == 200) {
+      final data = jsonDecode(resp.body);
+      return {
+        'success': true,
+        'detail': data['detail'] ?? 'Si el correo existe, enviaremos un enlace.'
+      };
+    } else {
+      return {
+        'success': false,
+        'message': 'Error ${resp.statusCode}: ${resp.body}'
+      };
+    }
+  } catch (e) {
+    return {'success': false, 'message': 'Error de red: $e'};
+  }
+}
+
+/// 2) Confirmar y fijar nueva contraseña
+Future<Map<String, dynamic>> confirmarRecuperacion({
+  required String uid,
+  required String token,
+  required String newPassword,
+}) async {
+  // En tu proyecto: "recuperacion/contraseña-confirmada" (sin slash final en tu captura).
+  // Te dejo con barra final; si te diera 301/404, prueba quitándola.
+  final url = Uri.parse('$baseUrl/recuperacion/contraseña-confirmada/');
+
+  try {
+    final resp = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'uid': uid,
+        'token': token,
+        'new_password': newPassword, // <- clave que acordaste en backend
+      }),
+    );
+
+    if (resp.statusCode == 200) {
+      final data = jsonDecode(resp.body);
+      return {'success': true, 'detail': data['detail'] ?? 'Contraseña actualizada.'};
+    } else if (resp.statusCode == 400) {
+      // errores de validación (token expirado, uid inválido, etc.)
+      return {
+        'success': false,
+        'message': jsonDecode(resp.body),
+      };
+    } else {
+      return {
+        'success': false,
+        'message': 'Error ${resp.statusCode}: ${resp.body}',
+      };
+    }
+  } catch (e) {
+    return {'success': false, 'message': 'Error de red: $e'};
+  }
+}
+
 
 
 }
