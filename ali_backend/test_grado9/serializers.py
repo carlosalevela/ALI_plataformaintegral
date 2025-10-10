@@ -1,5 +1,8 @@
 from rest_framework import serializers
 from .models import TestGrado9
+from django.conf import settings
+
+TOTAL_PREGUNTAS = getattr(settings, "GRADO9_TOTAL_PREGUNTAS", 48)
 
 class TestGrado9Serializer(serializers.ModelSerializer):
     usuario_email = serializers.ReadOnlyField(source="usuario.email")
@@ -37,6 +40,6 @@ class TestGrado9Serializer(serializers.ModelSerializer):
     def get_progreso_pct(self, obj: TestGrado9):
         # El modelo expone .progreso_pct como @property; si no, calculamos aquí por seguridad.
         try:
-            return getattr(obj, "progreso_pct", None) or round((obj.respondidas / 40) * 100, 2)
+            return getattr(obj, "progreso_pct", None) or round((obj.respondidas / TOTAL_PREGUNTAS) * 100, 2)
         except Exception:
             return 0.0

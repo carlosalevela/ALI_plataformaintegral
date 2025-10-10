@@ -1,5 +1,5 @@
-import numpy as np
-import joblib
+# test_grado9/views.py
+import os
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db import transaction
@@ -11,73 +11,109 @@ from rest_framework.decorators import action
 
 from .models import TestGrado9
 from .serializers import TestGrado9Serializer
-from .groq_service import generar_explicacion_modalidad  # 👈 Importado aquí
+from .groq_service import generar_explicacion_modalidad
+from .ml_model.test_grado9_model import predecir_tecnico_con_regla as predecir_tecnico
 
-# Rutas a los modelos entrenados
-MODEL_RF_PATH = "test_grado9/ml_model/test_grado9_model.pkl"
+# ----------------- 🔧 Constantes / utilidades -----------------
+TOTAL_PREGUNTAS = 48
+RESP_VALIDAS = {"Me encanta", "Me interesa", "No me gusta"}   # nuevas opciones
+# Compat con front viejo (A/B/C)
+MAP_A_B_C = {"A": "Me encanta", "B": "Me interesa", "C": "No me gusta", "D": None}
 
-# Cargar modelos
-model_rf = joblib.load(MODEL_RF_PATH)
-
-# ----------------- 🔧 Constantes / utilidades de progreso -----------------
-TOTAL_PREGUNTAS = 40
-RESP_VALIDAS = {"A", "B", "C", "D"}
-LETRA_A_VALOR = {"A": 4, "B": 3, "C": 2, "D": 1}
-VALOR_A_MODALIDAD = {1: "Industrial", 2: "Comercio", 3: "Promoción Social", 4: "Agropecuaria"}
-
+# Para derivar modalidad desde el técnico (para tu explicación Groq)
+MODALIDAD_POR_TECNICO = {
+    "Mantenimiento de Hardware y Software": "Industrial",
+    "Robótica": "Industrial",
+    "Electricidad y Electrónica": "Industrial",
+    "Emprendimiento y Fomento Empresarial": "Comercio",
+    "Diseño Gráfico": "Comercio",
+    "Contabilidad y Finanzas": "Comercio",
+    "Primera Infancia": "Promoción Social",
+    "Seguridad y Salud en el Trabajo": "Promoción Social",
+    "Promoción de la Salud": "Promoción Social",
+    "Agroindustria": "Agropecuaria",
+    "Científico/Humanista": "Académico",
+}
 
 def _contar_respondidas(respuestas: dict) -> int:
     if not isinstance(respuestas, dict):
         return 0
-    return sum(1 for i in range(1, TOTAL_PREGUNTAS + 1)
-               if respuestas.get(f"pregunta_{i}") in RESP_VALIDAS)
-
+    c = 0
+    for i in range(1, TOTAL_PREGUNTAS + 1):
+        r = respuestas.get(f"pregunta_{i}")
+        if r is None:
+            continue
+        r = str(r).strip()
+        if r in RESP_VALIDAS or (r in MAP_A_B_C and MAP_A_B_C[r] in RESP_VALIDAS):
+            c += 1
+    return c
 
 def _ultima_pregunta(respuestas: dict) -> int:
     if not isinstance(respuestas, dict):
         return 0
     last = 0
     for i in range(1, TOTAL_PREGUNTAS + 1):
-        if respuestas.get(f"pregunta_{i}") in RESP_VALIDAS:
+        r = respuestas.get(f"pregunta_{i}")
+        if r is None:
+            continue
+        r = str(r).strip()
+        if r in RESP_VALIDAS or (r in MAP_A_B_C and MAP_A_B_C[r] in RESP_VALIDAS):
             last = i
     return last
 
+def _normalizar_respuestas(respuestas_dict: dict):
+    """
+    Devuelve lista de 48 strings (Me encanta/Me interesa/No me gusta) en orden.
+    Si falta alguna o hay inválidas -> None.
+    """
+    if not isinstance(respuestas_dict, dict):
+        return None
+    out = []
+    for i in range(1, TOTAL_PREGUNTAS + 1):
+        r = respuestas_dict.get(f"pregunta_{i}")
+        if r is None:
+            return None
+        r = str(r).strip()
+        if r in MAP_A_B_C:  # acepta A/B/C también
+            r = MAP_A_B_C[r]
+        if r not in RESP_VALIDAS:
+            return None
+        out.append(r)
+    return out
 
 def _finalizar_y_predecir(test_instance: TestGrado9):
     """
-    Lógica de finalización: predice con RF + explicación Groq.
-    Usa exactamente tu mapeo y formato de resultado.
+    Finaliza el test y predice con el nuevo RF (48 preguntas, 3 opciones).
+    - Salida principal: técnico_predicho
+    - Además derivamos modalidad (para Groq).
     """
     respuestas = test_instance.respuestas or {}
 
-    # Validación final estricta (40/40 presentes y válidas)
-    required_fields = [f"pregunta_{i}" for i in range(1, TOTAL_PREGUNTAS + 1)]
-    if not all((f in respuestas) for f in required_fields):
-        return  # no finaliza
+    respuestas_norm = _normalizar_respuestas(respuestas)
+    if respuestas_norm is None:
+        return  # aún no finaliza (faltan o inválidas)
 
-    if not all(respuestas[f] in RESP_VALIDAS for f in required_fields):
-        return  # no finaliza
+    # Predicción con el paquete nuevo (top_k=3)
+    pred = predecir_tecnico(respuestas_norm, top_k=3)
+    tecnico = pred["tecnico_predicho"]
+    top3 = pred["top3"]
+    modalidad = MODALIDAD_POR_TECNICO.get(tecnico, "Desconocido")
 
-    # Array numérico
-    input_data = np.array([
-        LETRA_A_VALOR[respuestas[f"pregunta_{i}"]] for i in range(1, TOTAL_PREGUNTAS + 1)
-    ]).reshape(1, -1)
+    # Si tu prompt de Groq espera valores 3/2/1:
+    mapeo_321 = {"Me encanta": 3, "Me interesa": 2, "No me gusta": 1}
+    respuestas_codificadas = {f"pregunta_{i}": mapeo_321[r] for i, r in enumerate(respuestas_norm, start=1)}
 
-    # Predicción RF
-    prediction_rf = model_rf.predict(input_data)
-    modalidad_rf = VALOR_A_MODALIDAD.get(int(prediction_rf[0]), "Desconocido")
+    # Explicación con fallback
+    try:
+        explicacion = generar_explicacion_modalidad(modalidad, respuestas_codificadas)
+    except Exception:
+        explicacion = "No fue posible generar la explicación automática en este momento."
 
-    # Respuestas codificadas (1..4) para Groq
-    respuestas_codificadas = {
-        f"pregunta_{i}": LETRA_A_VALOR[respuestas[f"pregunta_{i}"]] for i in range(1, TOTAL_PREGUNTAS + 1)
-    }
-
-    # Explicación Groq
-    explicacion = generar_explicacion_modalidad(modalidad_rf, respuestas_codificadas)
-
-    # Resultado final (mismo formato que ya usas)
+    detalle_top3 = ", ".join([f"{nombre} ({prob:.2f})" for nombre, prob in top3])
     resultado_completo = (
-        f"Técnico sugerido por ALI: {modalidad_rf}\n\n"
+        f"Técnico sugerido por ALI: {tecnico}\n"
+        f"Modalidad asociada: {modalidad}\n"
+        f"Top-3: {detalle_top3}\n\n"
         f"Explicación: {explicacion}"
     )
 
@@ -87,12 +123,8 @@ def _finalizar_y_predecir(test_instance: TestGrado9):
     test_instance.fecha_realizacion = timezone.now()
     test_instance.save(update_fields=['resultado', 'estado', 'fecha_realizacion', 'fecha_ultima_actividad'])
 
-
+# ================== ViewSet principal ==================
 class TestGrado9ViewSet(viewsets.ModelViewSet):
-    """
-    API para gestionar los tests de grado 9 con predicción automática.
-    (Se añadió seguimiento de progreso sin alterar tu flujo final)
-    """
     serializer_class = TestGrado9Serializer
     permission_classes = [IsAuthenticated]
 
@@ -101,64 +133,54 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
         qs = TestGrado9.objects.all()
 
         if user.is_staff or user.is_superuser:
-            # ✅ Filtro opcional por estado: ?estado=EN_PROGRESO | FINALIZADO
             estado = self.request.query_params.get('estado')
             if estado in (TestGrado9.ESTADO_EN_PROGRESO, TestGrado9.ESTADO_FINALIZADO):
                 qs = qs.filter(estado=estado)
 
-            # ✅ Orden opcional por actividad reciente: ?orden=actividad
-            # Si no lo pides, se mantiene tu orden original por fecha_realizacion
             orden = self.request.query_params.get('orden')
             if orden == 'actividad':
                 return qs.order_by('-fecha_ultima_actividad', '-id')
 
             return qs.order_by('-fecha_realizacion', '-id')
 
-        # Estudiante: comportamiento original (orden por fecha_realizacion)
         return TestGrado9.objects.filter(usuario=user).order_by('-fecha_realizacion', '-id')
 
     def perform_create(self, serializer):
         """
         Guarda el test con el usuario autenticado.
-        ✅ Si ya vienen 40/40 válidas, predice y finaliza (tu lógica original).
-        ✅ Si vienen parciales, lo deja EN_PROGRESO sin error y actualiza progreso.
+        - Si llegan 48/48 válidas => finaliza + predice + explicación.
+        - Si vienen parciales => EN_PROGRESO y actualiza progreso.
         """
         test_instance = serializer.save(usuario=self.request.user)
         respuestas = test_instance.respuestas or {}
 
-        # Actualizar progreso (no rompe tu lógica)
         test_instance.respondidas = _contar_respondidas(respuestas)
         test_instance.ultima_pregunta = _ultima_pregunta(respuestas)
 
         try:
-            # Si no están todas, EN_PROGRESO (antes devolvías "Error: Faltan...")
             if test_instance.respondidas < TOTAL_PREGUNTAS:
                 test_instance.estado = TestGrado9.ESTADO_EN_PROGRESO
                 test_instance.save(update_fields=['respondidas', 'ultima_pregunta', 'estado'])
-                return  # 👈 No predice aún
+                return  # no predice aún
 
-            # Validación estricta (todas válidas)
-            required_fields = [f"pregunta_{i}" for i in range(1, TOTAL_PREGUNTAS + 1)]
-            if not all(respuestas[f] in RESP_VALIDAS for f in required_fields):
-                test_instance.resultado = "Error: Las respuestas deben ser solo A, B, C o D"
+            # Validación final (todas presentes y válidas)
+            if _normalizar_respuestas(respuestas) is None:
+                test_instance.resultado = (
+                    "Error: respuestas inválidas. Usa Me encanta / Me interesa / No me gusta (o A/B/C)."
+                )
                 test_instance.estado = TestGrado9.ESTADO_EN_PROGRESO
                 test_instance.save(update_fields=['resultado', 'estado', 'respondidas', 'ultima_pregunta'])
                 return
 
-            # ✅ Aquí está completo: finaliza + predice + explicación (tu flujo)
             _finalizar_y_predecir(test_instance)
 
         except Exception as e:
             test_instance.resultado = f"Error interno: {str(e)}"
             test_instance.save(update_fields=['resultado'])
 
-    # ----------------- 🔄 Acciones opcionales para progreso en tiempo real -----------------
+    # ---------- Acciones para progreso en vivo ----------
     @action(detail=False, methods=['post'], url_path='iniciar')
     def iniciar(self, request):
-        """
-        Crea o devuelve un test EN_PROGRESO para el usuario actual.
-        (No interfiere con tu POST estándar si envías 40/40 al final)
-        """
         user = request.user
         draft = (TestGrado9.objects
                  .filter(usuario=user, estado=TestGrado9.ESTADO_EN_PROGRESO)
@@ -170,13 +192,6 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['patch'], url_path='progreso')
     def progreso(self, request, pk=None):
-        """
-        Actualiza respuestas parciales para reflejar progreso en vivo.
-        No afecta tu endpoint de creación/resultado final.
-        Admite:
-          - {"pregunta": 7, "respuesta": "B"}
-          - {"respuestas": {"pregunta_7": "B", "pregunta_8": "A"}, "ultima_pregunta": 8}
-        """
         user = request.user
         try:
             test = TestGrado9.objects.get(pk=pk)
@@ -200,11 +215,15 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
                 n = int(data['pregunta'])
             except Exception:
                 return Response({"error": "Índice de pregunta inválido."}, status=400)
-            r = str(data['respuesta']).strip().upper()
+            r = str(data['respuesta']).strip()
             if not (1 <= n <= TOTAL_PREGUNTAS):
-                return Response({"error": "Índice de pregunta fuera de 1..40."}, status=400)
-            if r not in RESP_VALIDAS:
-                return Response({"error": "Respuesta inválida (A/B/C/D)."}, status=400)
+                return Response({"error": f"Índice de pregunta fuera de 1..{TOTAL_PREGUNTAS}."}, status=400)
+            # aceptar A/B/C además de texto
+            if r not in RESP_VALIDAS and not (r in MAP_A_B_C and MAP_A_B_C[r] in RESP_VALIDAS):
+                return Response(
+                    {"error": "Respuesta inválida (Me encanta / Me interesa / No me gusta o A/B/C)."},
+                    status=400
+                )
             updates[f"pregunta_{n}"] = r
 
         # Carga múltiple
@@ -216,11 +235,16 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
                     idx = int(k.split('_')[1])
                 except Exception:
                     continue
-                r = str(v).strip().upper()
-                if 1 <= idx <= TOTAL_PREGUNTAS and r in RESP_VALIDAS:
+                r = str(v).strip()
+                if not (1 <= idx <= TOTAL_PREGUNTAS):
+                    return Response({"error": f"Índice de pregunta fuera de 1..{TOTAL_PREGUNTAS}."}, status=400)
+                if r in RESP_VALIDAS or (r in MAP_A_B_C and MAP_A_B_C[r] in RESP_VALIDAS):
                     updates[f"pregunta_{idx}"] = r
                 else:
-                    return Response({"error": f"Inválida {k} (A/B/C/D y 1..40)."}, status=400)
+                    return Response(
+                        {"error": f"Inválida {k} (Me encanta / Me interesa / No me gusta o A/B/C)."},
+                        status=400
+                    )
 
         if not updates:
             return Response({"error": "No hay respuestas válidas para actualizar."}, status=400)
@@ -230,7 +254,6 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
             test.respuestas = respuestas
             test.respondidas = _contar_respondidas(respuestas)
 
-            # ultima_pregunta explícita o calculada
             up_exp = data.get('ultima_pregunta')
             if isinstance(up_exp, int) and 1 <= up_exp <= TOTAL_PREGUNTAS:
                 test.ultima_pregunta = up_exp
@@ -245,7 +268,7 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
 
             test.save()
 
-        # Si se completó aquí, finaliza y predice (tu formato)
+        # Si se completó aquí, finaliza y predice
         if test.estado == TestGrado9.ESTADO_FINALIZADO:
             try:
                 _finalizar_y_predecir(test)
@@ -263,20 +286,16 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
             "fecha_ultima_actividad": test.fecha_ultima_actividad,
         }, status=200)
 
-
-# ----------------- Tus APIView existentes (SIN CAMBIOS) -----------------
+# ----------------- APIViews existentes -----------------
 class ResultadoTest9PorIDView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, test_id):
         user = request.user
-
         try:
-            # Si es admin, puede ver cualquier test
             if user.is_staff or user.is_superuser:
                 test = TestGrado9.objects.get(id=test_id)
             else:
-                # Usuario normal solo puede ver sus propios tests
                 test = TestGrado9.objects.get(id=test_id, usuario=user)
         except TestGrado9.DoesNotExist:
             return Response({"error": "No tienes acceso a este test o no existe."}, status=status.HTTP_404_NOT_FOUND)
@@ -284,17 +303,13 @@ class ResultadoTest9PorIDView(APIView):
         serializer = TestGrado9Serializer(test)
         return Response(serializer.data)
 
-
 class TestsDeUsuarioPorAdminView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, user_id):
         if not (request.user.is_staff or request.user.is_superuser):
-            return Response(
-                {"error": "No tienes permiso para ver esta información."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
+            return Response({"error": "No tienes permiso para ver esta información."},
+                            status=status.HTTP_403_FORBIDDEN)
         User = get_user_model()
         try:
             usuario = User.objects.get(id=user_id)
@@ -305,24 +320,19 @@ class TestsDeUsuarioPorAdminView(APIView):
         serializer = TestGrado9Serializer(tests, many=True)
         return Response(serializer.data)
 
-
 class FiltroPorTecnicoView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if not (request.user.is_staff or request.user.is_superuser):
-            return Response(
-                {"error": "No tienes permisos para ver esta información."},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        user = request.user
+        if not (user.is_staff or user.is_superuser):
+            return Response({"error": "No tienes permisos para ver esta información."},
+                            status=status.HTTP_403_FORBIDDEN)
 
         tecnico = request.query_params.get("tecnico", "").strip()
-
         if not tecnico:
-            return Response(
-                {"error": "Debes especificar un técnico en el parámetro 'tecnico'."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Debes especificar un técnico en el parámetro 'tecnico'."},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         tests_filtrados = TestGrado9.objects.filter(resultado__icontains=tecnico).order_by("-fecha_realizacion")
         serializer = TestGrado9Serializer(tests_filtrados, many=True)

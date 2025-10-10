@@ -52,5 +52,5 @@ class TestGrado9(models.Model):
 
     @property
     def progreso_pct(self) -> float:
-        total = 40
+        total = 48
         return round((self.respondidas / total) * 100, 2)
