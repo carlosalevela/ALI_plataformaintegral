@@ -7,8 +7,8 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
-  BACKEND_PATH: "ali_backend"    # carpeta donde están manage.py y settings.py
-  AZURE_WEBAPP_NAME: "ali"       # nombre del App Service
+  BACKEND_PATH: "ali_backend"
+  AZURE_WEBAPP_NAME: "ali"
 
 jobs:
   build:
@@ -23,18 +23,17 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # Instalar dependencias para detectar errores temprano (build local opcional)
+      # ⬇️ INSTALAR DESDE LA RAÍZ (requirements.txt está en la raíz)
       - name: Create venv & install deps (local check)
         run: |
           python -m venv .venv
           source .venv/bin/activate
-          pip install --upgrade pip
-          pip install -r ${{ env.BACKEND_PATH }}/requirements.txt
-          # Compilar estáticos si usas WhiteNoise (no falla si no hay):
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # compilar estáticos si aplica (dentro de ali_backend)
           (cd ${{ env.BACKEND_PATH }} && python manage.py collectstatic --noinput) || true
 
-      # Subir SOLO el backend como artefacto
-      - name: Upload artifact
+      - name: Upload artifact (only backend folder)
         uses: actions/upload-artifact@v4
         with:
           name: backend
@@ -68,4 +67,4 @@ jobs:
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           slot-name: "Production"
-          package: "."    # desplegamos el contenido del artefacto (que es ali_backend/)
+          package: "."
