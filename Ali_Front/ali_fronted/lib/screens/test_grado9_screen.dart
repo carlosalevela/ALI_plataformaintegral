@@ -19,48 +19,86 @@ class _TestGrado9PageState extends State<TestGrado9Page>
   static const Color azulSeleccion   = Color(0xFFA7D8F5); // selección opción
   static const Color azulAcento      = Color(0xFF4FC3F7); // acento / barras
 
-  // ---------------------- 40 preguntas completas
-  final List<String> preguntas = [
-    '¿Te gustaría programar aplicaciones o páginas web?',
-    '¿Disfrutas resolver problemas técnicos con software o computadoras?',
-    '¿Te interesa aprender a escribir código para automatizar tareas?',
-    '¿Te emociona la idea de crear soluciones tecnológicas para la vida diaria?',
-    '¿Te gustaría armar circuitos con sensores, luces o motores?',
-    '¿Disfrutas entender cómo funcionan los sistemas automáticos?',
-    '¿Te interesa diseñar mecanismos con movimiento y precisión?',
-    '¿Te gustaría trabajar en la creación de robots?',
-    '¿Te llama la atención instalar o reparar sistemas eléctricos?',
-    '¿Te gustaría conocer los riesgos eléctricos en una vivienda o empresa?',
-    '¿Te interesa trabajar en instalaciones eléctricas para proyectos grandes?',
-    '¿Disfrutas seguir planos técnicos para conectar cables y dispositivos?',
-    '¿Te gustaría crear tu propio negocio y vender productos o servicios?',
-    '¿Te interesa saber cómo funciona una empresa desde adentro?',
-    '¿Disfrutas liderar actividades en grupo o tomar decisiones?',
-    '¿Te gusta organizar tareas y trabajar en equipo?',
-    '¿Disfrutas diseñar logotipos, afiches o material publicitario?',
-    '¿Te interesa usar herramientas digitales para crear contenido visual?',
-    '¿Te gustaría trabajar en la producción de videos o animaciones?',
-    '¿Te llama la atención expresar ideas a través del diseño?',
-    '¿Te interesa llevar el control de ingresos y gastos de una empresa?',
-    '¿Disfrutas trabajar con números y cálculos detallados?',
-    '¿Te gustaría registrar movimientos financieros en hojas de cálculo?',
-    '¿Te gusta seguir normas claras al momento de manejar documentos?',
-    '¿Te interesa ayudar a las personas a desarrollar sus capacidades?',
-    '¿Disfrutas acompañar procesos de selección o entrevistas laborales?',
-    '¿Te gustaría liderar actividades de formación o capacitación?',
-    '¿Te interesa promover el bienestar dentro de una empresa?',
-    '¿Disfrutas jugar y cuidar niños pequeños?',
-    '¿Te gustaría apoyar el desarrollo emocional y cognitivo en la niñez?',
-    '¿Te interesa diseñar actividades didácticas para niños?',
-    '¿Sientes vocación por enseñar y acompañar a la infancia?',
-    '¿Te gustaría ayudar a prevenir accidentes en el trabajo?',
-    '¿Te interesa conocer las normas de seguridad en las empresas?',
-    '¿Te gustaría asesorar sobre salud y prevención de riesgos laborales?',
-    '¿Disfrutas identificar posibles peligros en los espacios de trabajo?',
-    '¿Te gustaría trabajar con plantas, cultivos o animales?',
-    '¿Disfrutas cuidar el medio ambiente y los recursos naturales?',
-    '¿Te interesa aprender sobre técnicas de producción agrícola?',
-    '¿Te llama la atención contribuir a la alimentación de la comunidad?',
+  // ---------------------- 57 preguntas completas
+      final List<String> preguntas = [
+    // COMERCIO — Emprendimiento y Fomento Empresarial (5)
+    '¿Te gustaría aprender a organizar gastos, tareas y avances de un proyecto sencillo?',
+    'En tu familia, colegio o barrio, ¿te gustaría identificar necesidades y pensar soluciones simples y prácticas?',
+    '¿Te gustaría hablar con personas para entender qué necesitan o qué les gustaría comprar?',
+    '¿Te animarías a explicar una idea en pocas palabras diciendo qué problema resuelve y a qué población va dirigida?',
+    '¿Te gustaría crear una marca y usar redes, afiches o recomendaciones para dar a conocer una idea?',
+
+    // COMERCIO — Diseño Gráfico (5)
+    '¿Te gustaría crear diseños para redes sociales, afiches, logos o caricaturas?',
+    '¿Te gustaría aprender a elegir colores, tipografías y orden para que un diseño se vea bien?',
+    '¿Te gustaría aprender el manejo digital para generar archivos listos para imprimir y publicar?',
+    '¿Te gustaría recibir comentarios y usarlos para mejorar tus diseños?',
+    '¿Te gustaría diseñar la imagen completa de una marca o empresa (colores, logo y estilo)?',
+
+    // COMERCIO — Contabilidad y Finanzas (5)
+    '¿Te gustaría aprender a llevar los movimientos financieros (entradas y salidas de dinero) usando documentos o soportes contables?',
+    '¿Te gustaría elaborar documentos o soportes contables (como recibos, cuentas o facturas) con cuidado y evitando equivocarte?',
+    '¿Te gustaría aprender a guardar papeles y archivos en orden para encontrarlos rápido?',
+    '¿Te gustaría revisar resúmenes de ingresos y gastos para entender si un proyecto va bien o mal?',
+    '¿Te gustaría cuidar la confidencialidad de la información financiera de otras personas o negocios?',
+
+    // INDUSTRIAL — Mantenimiento de Hardware y Software (5)
+    '¿Te gustaría aprender a descubrir por qué un computador no funciona y seguir pasos para solucionarlo?',
+    '¿Te gustaría aprender a instalar programas y dejar un computador listo para usar?',
+    '¿Te gustaría aprender a armar y desarmar un computador con cuidado para no dañar piezas?',
+    '¿Te gustaría aprender a conectar un computador a internet por cable o Wi-Fi y resolver problemas de conexión?',
+    '¿Te gustaría aprender a registrar lo que hiciste y hacer copias de seguridad para no perder información?',
+
+    // INDUSTRIAL — Electricidad y Electrónica (5)
+    '¿Te gustaría aprender sobre circuitos y entender cómo hacen funcionar luces o equipos?',
+    '¿Te gustaría aprender a instalar cables y enchufes siguiendo normas de seguridad?',
+    '¿Te interesa aprender a usar herramientas para revisar si hay corriente de forma segura?',
+    '¿Te gustaría aprender a armar y probar paneles o equipos siguiendo un paso a paso?',
+    '¿Te gustaría aprender a protegerte (guantes, gafas y más) para experimentar con proyectos eléctricos de forma segura y sentirte confiado al hacerlo?',
+
+    // INDUSTRIAL — Robótica (5)
+    '¿Te gustaría programar una tarjeta que haga prender luces o mover motores?',
+    '¿Te llama la atención aprender programación paso a paso para automatizar movimientos o procesos con controladores básicos?',
+    '¿Te gustaría probar tu proyecto, encontrar y corregir errores y mejorarlo hasta que funcione como lo imaginaste?',
+    '¿Te gusta dibujar y explicar tu proyecto para que otros lo entiendan?',
+    '¿Te emociona la idea de aprender a crear un robot que resuelva un reto real en el colegio o tu comunidad y mostrarlo en ferias o concursos?',
+
+    // AGROPECUARIA — Agroindustria (6)
+    '¿Te gustaría aprender a cuidar plantas desde la semilla (siembra, riego, compost) y ver cómo crecen los cultivos?',
+    '¿Te interesa conocer cuidados básicos de animales (alimentación, higiene y bienestar) de forma responsable y segura?',
+    '¿Te motiva proteger la naturaleza cuidando agua, suelo y bosques con prácticas sencillas y útiles?',
+    '¿Te gustaría aprender técnicas seguras para producir y transformar alimentos (higiene, conservación y calidad)?',
+    '¿Te gustaría realizar actividades al aire libre, trabajando en huertas o granjas escolares y observando el entorno natural?',
+    '¿Te gustaría participar en la elaboración de alimentos (recetas, medidas, empaque simple) y probar los resultados con tus compañeros?',
+
+    // ACADÉMICO — Científico/Humanista (6)
+    '¿Te gusta hacer preguntas y proponer una idea posible (hipótesis) para explicarlas?',
+    '¿Te interesa hacer experimentos simples, anotar resultados y compararlos?',
+    '¿Te gustaría explicar con tus palabras fenómenos de Física, Química y Biología usando ejemplos cercanos, como por qué frena una bici, cómo el jabón quita la grasa o cómo cicatriza un raspón?',
+    '¿Te gustaría usar matemáticas (porcentajes, gráficas, medidas) para resolver situaciones de la vida cotidiana?',
+    '¿Te animas a escribir un texto corto y presentar tus ideas con respeto?',
+    '¿Te gustaría resolver retos ambientales del colegio o tu barrio (ahorro de agua, reciclaje, calidad del aire) usando experimentos y tecnología?',
+
+    // PROMOCIÓN SOCIAL — Primera Infancia (5)
+    '¿Te gustaría aprender el papel de la salud en la primera infancia (rutinas de higiene, alimentación y sueño) para cuidar mejor a niños y niñas?',
+    '¿Te interesa aprender a planear actividades según la edad (juegos, cuentos, arte) que apoyen su desarrollo?',
+    '¿Te gustaría trabajar junto a familias y docentes para promover hábitos saludables (higiene, alimentación, movimiento)?',
+    '¿Te interesa aprender primeros auxilios básicos para niños y niñas y saber qué hacer en situaciones comunes?',
+    '¿Te gustaría promover el cuidado del entorno con rutinas simples (ahorro de agua, reciclaje) y explicar a los niños cómo eso protege su salud?',
+
+    // PROMOCIÓN SOCIAL — Seguridad y Salud en el Trabajo (5)
+    '¿Te gustaría aprender a que los espacios del colegio sean más seguros para todos?',
+    '¿Te gustaría aprender a reconocer cosas que pueden causar accidentes (piso mojado, objetos en el suelo, cables tirados) y decir qué hacer para evitarlos?',
+    '¿Te gustaría proponer acciones simples para cuidarnos (secar un derrame, despejar pasillos, ordenar cables) y explicar al grupo cómo hacerlo?',
+    '¿Te gustaría llenar registros sencillos (listas de chequeo, notas) de forma ordenada y sin errores?',
+    '¿Te gustaría participar en prácticas (simulacros, primeros auxilios básicos, recorridos de verificación) apoyando a las personas y anotando lo observado?',
+
+    // PROMOCIÓN SOCIAL — Promoción de la Salud (5)
+    '¿Te gusta participar en campañas para mejorar hábitos saludables (agua, actividad física, alimentación)?',
+    '¿Te gustaría explicar temas de salud con palabras simples a niños, jóvenes o adultos?',
+    '¿Te gustaría hacer talleres o jornadas en tu barrio o colegio para hablar de salud?',
+    '¿Te gustaría anotar de forma sencilla lo que se hizo (actividad, fecha) y luego revisar con tu grupo si ayudó a mejorar un hábito o cuidado de salud?',
+    '¿Te ves estudiando o trabajando en proyectos de salud o trabajo social?',
   ];
 
   final Map<String, String> opciones = {

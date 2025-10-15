@@ -8,6 +8,7 @@ from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied  # ← ADD
 
 from .models import TestGrado9
 from .serializers import TestGrado9Serializer
@@ -128,6 +129,14 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
     serializer_class = TestGrado9Serializer
     permission_classes = [IsAuthenticated]
 
+    # ← ADD: refuerza propiedad para TODAS las acciones detail (retrieve/update/partial_update/destroy)
+    def get_object(self):
+        obj = super().get_object()
+        user = self.request.user
+        if not (user.is_staff or user.is_superuser or obj.usuario_id == user.id):
+            raise PermissionDenied("No tienes permiso para ver o modificar este test.")
+        return obj
+
     def get_queryset(self):
         user = self.request.user
         qs = TestGrado9.objects.all()
@@ -152,6 +161,12 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
         - Si vienen parciales => EN_PROGRESO y actualiza progreso.
         """
         test_instance = serializer.save(usuario=self.request.user)
+
+        # ← ADD: asegura fecha_inicio
+        if not test_instance.fecha_inicio:
+            test_instance.fecha_inicio = timezone.now()
+            test_instance.save(update_fields=['fecha_inicio'])
+
         respuestas = test_instance.respuestas or {}
 
         test_instance.respondidas = _contar_respondidas(respuestas)
@@ -187,7 +202,11 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
                  .order_by('-fecha_ultima_actividad')
                  .first())
         if not draft:
-            draft = TestGrado9.objects.create(usuario=user, respuestas={})
+            draft = TestGrado9.objects.create(
+                usuario=user,
+                respuestas={},
+                fecha_inicio=timezone.now()  # ← ADD: fecha de inicio al crear borrador
+            )
         return Response(TestGrado9Serializer(draft).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['patch'], url_path='progreso')

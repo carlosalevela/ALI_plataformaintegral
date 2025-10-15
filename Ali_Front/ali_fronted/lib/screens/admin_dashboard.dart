@@ -10,6 +10,7 @@
 // ignore_for_file: depend_on_referenced_packages
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'dart:async'; // <<< LIVE PROGRESS (polling)
 import 'package:flutter/rendering.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -80,6 +81,123 @@ class _AdminDashboardState extends State<AdminDashboard> {
   final GlobalKey _keyEstado = GlobalKey();
   final GlobalKey _keyByDay = GlobalKey();
 
+  // ── LIVE PROGRESS (polling) ───────────────────────────────────
+  Timer? _liveTimer;
+  final Duration _liveEvery = const Duration(seconds: 10);
+  bool _liveBusy = false;
+
+  String _fmtProgreso(Map<String, dynamic> t, {required int total}) {
+    final estado = t['estado']?.toString() ?? '';
+    final resp   = (t['respondidas'] as num?)?.toInt() ?? 0;
+    final ult    = (t['ultima_pregunta'] as num?)?.toInt() ?? 0;
+    final pct    = (t['progreso_pct'] as num?)?.toDouble() ?? (total > 0 ? (resp / total) * 100 : 0);
+
+    if (estado == 'FINALIZADO') return 'Finalizado';
+    if (estado == 'EN_PROGRESO') return 'En progreso: $resp/$total (P$ult) ${pct.toStringAsFixed(0)}%';
+    return '—';
+  }
+
+  void _startLiveWatch() {
+    _liveTimer?.cancel();
+    _liveTimer = Timer.periodic(_liveEvery, (_) => _tickLive());
+  }
+
+  void _stopLiveWatch() {
+    _liveTimer?.cancel();
+    _liveTimer = null;
+  }
+
+  Future<void> _tickLive() async {
+    if (!mounted || _liveBusy) return;
+    _liveBusy = true;
+    try {
+      // 1) 9° — feed EN_PROGRESO
+      final feed9 = await apiService.fetchTestsGrado9(
+        estado: 'EN_PROGRESO',
+        orden: 'actividad',
+        limit: 200,
+        offset: 0,
+      );
+      final Map<int, Map<String, dynamic>> m9 = {
+        for (final t in feed9) (t['usuario'] as num).toInt(): t as Map<String, dynamic>
+      };
+
+      for (final al in estudiantesPorGrado['9']!) {
+        final uid = (al['id'] as num).toInt();
+        final testEnProg = m9[uid];
+        if (testEnProg != null) {
+          final nuevo = _fmtProgreso(testEnProg, total: 40);
+          if (al['progreso'] != nuevo) {
+            setState(() => al['progreso'] = nuevo);
+          }
+        } else {
+          final old = (al['progreso'] ?? '').toString();
+          if (old.startsWith('En progreso')) {
+            final testsUsr = await apiService.fetchTestsGrado9PorUsuario(uid);
+            if (testsUsr.isNotEmpty) {
+              final last = Map<String, dynamic>.from(testsUsr.first);
+              final est = (last['estado'] ?? '').toString().toUpperCase();
+              if (est == 'FINALIZADO') {
+                final det = await apiService.fetchResultadoTest9PorId((last['id'] as num).toInt());
+                setState(() {
+                  al['progreso'] = 'Finalizado';
+                  al['ultimaRecomendacion'] = det['resultado'] ?? al['ultimaRecomendacion'] ?? '—';
+                });
+              } else {
+                setState(() => al['progreso'] = '—');
+              }
+            }
+          }
+        }
+      }
+
+      // 2) 10/11 — feed EN_PROGRESO
+      final feed1011 = await apiService.fetchTestsGrado10y11(
+        estado: 'EN_PROGRESO',
+        orden: 'actividad',
+        limit: 200,
+        offset: 0,
+      );
+      final Map<int, Map<String, dynamic>> m1011 = {
+        for (final t in feed1011) (t['usuario'] as num).toInt(): t as Map<String, dynamic>
+      };
+
+      final list1011 = [...estudiantesPorGrado['10']!, ...estudiantesPorGrado['11']!];
+      for (final al in list1011) {
+        final uid = (al['id'] as num).toInt();
+        final testEnProg = m1011[uid];
+        if (testEnProg != null) {
+          final nuevo = _fmtProgreso(testEnProg, total: 40);
+          if (al['progreso'] != nuevo) {
+            setState(() => al['progreso'] = nuevo);
+          }
+        } else {
+          final old = (al['progreso'] ?? '').toString();
+          if (old.startsWith('En progreso')) {
+            final testsUsr = await apiService.fetchTestsGrado10y11PorUsuario(uid);
+            if (testsUsr.isNotEmpty) {
+              final last = Map<String, dynamic>.from(testsUsr.first);
+              final est = (last['estado'] ?? '').toString().toUpperCase();
+              if (est == 'FINALIZADO') {
+                final det = await apiService.fetchResultadoTest10y11PorId((last['id'] as num).toInt());
+                setState(() {
+                  al['progreso'] = 'Finalizado';
+                  al['ultimaRecomendacion'] = det['resultado'] ?? al['ultimaRecomendacion'] ?? '—';
+                });
+              } else {
+                setState(() => al['progreso'] = '—');
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('tick live error: $e');
+    } finally {
+      _liveBusy = false;
+    }
+  }
+
   // ───────────────────────── init
   @override
   void initState() {
@@ -92,6 +210,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _stopLiveWatch(); // <<< LIVE PROGRESS (polling)
     super.dispose();
   }
 
@@ -176,6 +295,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (mounted) {
       setState(() => _isLoading = false);
       _cargarEstadisticas(); // dashboard 9/10/11 técnicos/carreras
+      _startLiveWatch(); // <<< LIVE PROGRESS (polling) — arranca después de cargar
     }
   }
 

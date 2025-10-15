@@ -11,7 +11,7 @@ class TestGrado9Serializer(serializers.ModelSerializer):
     class Meta:
         model = TestGrado9
         fields = [
-            # 🔹 Campos originales (intactos)
+            # 🔹 Campos originales
             "id",
             "usuario",
             "usuario_email",
@@ -19,7 +19,7 @@ class TestGrado9Serializer(serializers.ModelSerializer):
             "resultado",
             "fecha_realizacion",
 
-            # 🔹 Nuevos campos de progreso/seguimiento
+            # 🔹 Progreso/seguimiento
             "estado",
             "ultima_pregunta",
             "respondidas",
@@ -28,17 +28,16 @@ class TestGrado9Serializer(serializers.ModelSerializer):
             "fecha_ultima_actividad",
         ]
         read_only_fields = [
-            # Mantén estos como solo-lectura para no romper tu flujo actual
+            "usuario",             # ← Protege la propiedad del test
             "resultado",
             "fecha_realizacion",
             "progreso_pct",
             "fecha_inicio",
             "fecha_ultima_actividad",
-            "respondidas",         # se calcula del JSON de respuestas
+            "respondidas",
         ]
 
     def get_progreso_pct(self, obj: TestGrado9):
-        # El modelo expone .progreso_pct como @property; si no, calculamos aquí por seguridad.
         try:
             return getattr(obj, "progreso_pct", None) or round((obj.respondidas / TOTAL_PREGUNTAS) * 100, 2)
         except Exception:
