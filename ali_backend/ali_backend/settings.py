@@ -111,9 +111,9 @@ WSGI_APPLICATION = 'ali_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'psicoorientacion_bd',  # Nombre de la base de datos (igual)
+        'NAME': 'bd_ali',  # Nombre de la base de datos (igual)
         'USER': 'postgres',                 # Usuario de PostgreSQL (puede ser 'postgres' si usas el default)
-        'PASSWORD': 'Volcano21!',       # Misma contraseña
+        'PASSWORD': 'lina123',       # Misma contraseña
         'HOST': 'localhost',            # O IP del servidor
         'PORT': '5432',                 # Puerto por defecto de PostgreSQL
     }

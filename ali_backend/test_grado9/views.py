@@ -12,12 +12,10 @@ from rest_framework.decorators import action
 from .models import TestGrado9
 from .serializers import TestGrado9Serializer
 from .groq_service import generar_explicacion_modalidad
-
-# ⬇️ Modelo nuevo (57 preguntas + metas)
-from .ml_model.model9 import predecir as predecir_tecnico
+from .ml_model.test_grado9_model import predecir_tecnico_con_regla as predecir_tecnico
 
 # ----------------- 🔧 Constantes / utilidades -----------------
-TOTAL_PREGUNTAS = 57
+TOTAL_PREGUNTAS = 48
 RESP_VALIDAS = {"Me encanta", "Me interesa", "No me gusta"}   # nuevas opciones
 # Compat con front viejo (A/B/C)
 MAP_A_B_C = {"A": "Me encanta", "B": "Me interesa", "C": "No me gusta", "D": None}
@@ -65,7 +63,7 @@ def _ultima_pregunta(respuestas: dict) -> int:
 
 def _normalizar_respuestas(respuestas_dict: dict):
     """
-    Devuelve lista de 57 strings (Me encanta/Me interesa/No me gusta) en orden.
+    Devuelve lista de 48 strings (Me encanta/Me interesa/No me gusta) en orden.
     Si falta alguna o hay inválidas -> None.
     """
     if not isinstance(respuestas_dict, dict):
@@ -85,7 +83,7 @@ def _normalizar_respuestas(respuestas_dict: dict):
 
 def _finalizar_y_predecir(test_instance: TestGrado9):
     """
-    Finaliza el test y predice con el nuevo modelo (57 preguntas, 3 opciones).
+    Finaliza el test y predice con el nuevo RF (48 preguntas, 3 opciones).
     - Salida principal: técnico_predicho
     - Además derivamos modalidad (para Groq).
     """
@@ -95,11 +93,10 @@ def _finalizar_y_predecir(test_instance: TestGrado9):
     if respuestas_norm is None:
         return  # aún no finaliza (faltan o inválidas)
 
-    # Predicción con el modelo nuevo (top_k=3)
+    # Predicción con el paquete nuevo (top_k=3)
     pred = predecir_tecnico(respuestas_norm, top_k=3)
-    tecnico = pred.get("tecnico_predicho")
-    # soportar 'top3' o 'topk' según implementación
-    top3 = pred.get("top3") or pred.get("topk") or []
+    tecnico = pred["tecnico_predicho"]
+    top3 = pred["top3"]
     modalidad = MODALIDAD_POR_TECNICO.get(tecnico, "Desconocido")
 
     # Si tu prompt de Groq espera valores 3/2/1:
@@ -112,7 +109,7 @@ def _finalizar_y_predecir(test_instance: TestGrado9):
     except Exception:
         explicacion = "No fue posible generar la explicación automática en este momento."
 
-    detalle_top3 = ", ".join([f"{nombre} ({float(prob):.2f})" for nombre, prob in top3])
+    detalle_top3 = ", ".join([f"{nombre} ({prob:.2f})" for nombre, prob in top3])
     resultado_completo = (
         f"Técnico sugerido por ALI: {tecnico}\n"
         f"Modalidad asociada: {modalidad}\n"
@@ -151,7 +148,7 @@ class TestGrado9ViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """
         Guarda el test con el usuario autenticado.
-        - Si llegan 57/57 válidas => finaliza + predice + explicación.
+        - Si llegan 48/48 válidas => finaliza + predice + explicación.
         - Si vienen parciales => EN_PROGRESO y actualiza progreso.
         """
         test_instance = serializer.save(usuario=self.request.user)
@@ -294,7 +291,7 @@ class ResultadoTest9PorIDView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, test_id):
-        user = self.request.user
+        user = request.user
         try:
             if user.is_staff or user.is_superuser:
                 test = TestGrado9.objects.get(id=test_id)

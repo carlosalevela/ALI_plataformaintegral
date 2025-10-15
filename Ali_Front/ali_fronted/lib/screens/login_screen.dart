@@ -1,3 +1,4 @@
+import 'dart:math' as math; // NUEVO: para animación shake
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
@@ -8,7 +9,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin { // NUEVO mixin
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _emailController    = TextEditingController();
@@ -17,10 +18,51 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String? _error;
 
+  // ======= NUEVO: errores por campo =======
+  String? _emailError;
+  String? _passwordError;
+  String? _usernameError;
+
+  // ======= NUEVO: animación de “shake” para el botón Iniciar =======
+  late final AnimationController _shakeCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 500),
+  );
+  late final Animation<double> _shakeAnim = CurvedAnimation(
+    parent: _shakeCtrl,
+    curve: Curves.elasticIn,
+  );
+  // ================================================================
+
+  @override
+  void initState() {
+    super.initState();
+    // Limpia error de campo al tipear
+    _emailController.addListener(() {
+      if (_emailError != null) setState(() => _emailError = null);
+    });
+    _passwordController.addListener(() {
+      if (_passwordError != null) setState(() => _passwordError = null);
+    });
+    _usernameController.addListener(() {
+      if (_usernameError != null) setState(() => _usernameError = null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _shakeCtrl.dispose(); // NUEVO
+    super.dispose();
+  }
+
   void _login() async {
     setState(() {
       _isLoading = true;
       _error = null;
+      // limpia errores previos por campo
+      _emailError = null;
+      _passwordError = null;
+      _usernameError = null;
     });
 
     final result = await apiService.login(
@@ -31,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = false);
 
-    if (result['success']) {
+    if (result is Map && result['success'] == true) {
       final rol = result['role'];
       if (rol == 'admin') {
         if (!mounted) return;
@@ -41,11 +83,41 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pushReplacementNamed(context, '/estudiante');
       }
     } else {
-      setState(() => _error = result['message']);
+      // ======= NUEVO: mapeo de errores a campos + mensaje garantizado =======
+      final rawMsg = (result is Map ? result['message'] : null)?.toString();
+      final msg = (rawMsg == null || rawMsg.trim().isEmpty)
+          ? 'Credenciales inválidas'
+          : rawMsg;
+
+      final field = (result is Map
+              ? (result['field'] ?? result['error_field'])
+              : null)
+          ?.toString()
+          .toLowerCase();
+      final code  = (result is Map ? result['code'] : null)
+          ?.toString()
+          .toLowerCase();
+      final lmsg  = msg.toLowerCase();
+
+      if (field == 'email' || lmsg.contains('correo') || lmsg.contains('email')) {
+        _emailError = msg;
+      } else if (field == 'password' || lmsg.contains('contraseña') || lmsg.contains('password') || code == 'invalid_credentials') {
+        _passwordError = msg;
+      } else if (field == 'username' || lmsg.contains('usuario')) {
+        _usernameError = msg;
+      } else {
+        _passwordError = 'Credenciales inválidas';
+      }
+
+      setState(() => _error = msg);
+
+      // Dispara animación de “shake” del botón
+      _shakeCtrl.forward(from: 0);
+      // ================================================================
     }
   }
 
-  // ======= NUEVO: flujo "¿Olvidaste tu contraseña?" =======
+  // ======= NUEVO: flujo "¿Olvidaste tu contraseña?" (igual al tuyo) =======
   void _forgotPassword() async {
     final emailCtrl = TextEditingController(text: _emailController.text.trim());
 
@@ -140,8 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-/// Wrapper que inyecta tus controladores/estado al card
-/// y aplica micro-animación de entrada (fade + slide).
+/// Wrapper que inyecta controladores/estado y pasa animación de shake
 class _LoginCardWrapper extends StatelessWidget {
   const _LoginCardWrapper({super.key});
 
@@ -163,7 +234,12 @@ class _LoginCardWrapper extends StatelessWidget {
         isLoading: state._isLoading,
         error: state._error,
         onLogin: state._login,
-        onForgot: state._forgotPassword, // <-- NUEVO
+        onForgot: state._forgotPassword,
+        // NUEVO: errores y animación
+        emailError: state._emailError,
+        passwordError: state._passwordError,
+        usernameError: state._usernameError,
+        shake: state._shakeAnim,
       ),
     );
   }
@@ -178,7 +254,12 @@ class _LoginCard extends StatelessWidget {
     required this.isLoading,
     required this.error,
     required this.onLogin,
-    required this.onForgot, // <-- NUEVO
+    required this.onForgot,
+    // NUEVO
+    this.emailError,
+    this.passwordError,
+    this.usernameError,
+    this.shake,
   });
 
   final TextEditingController usernameController;
@@ -187,7 +268,13 @@ class _LoginCard extends StatelessWidget {
   final bool isLoading;
   final String? error;
   final VoidCallback onLogin;
-  final VoidCallback onForgot; // <-- NUEVO
+  final VoidCallback onForgot;
+
+  // NUEVO
+  final String? emailError;
+  final String? passwordError;
+  final String? usernameError;
+  final Animation<double>? shake;
 
   @override
   Widget build(BuildContext context) {
@@ -235,78 +322,87 @@ class _LoginCard extends StatelessWidget {
             hint: 'Email',
             icon: Icons.alternate_email,
             onSubmit: onLogin,
+            errorText: emailError,
+            isError: emailError != null,
           ),
           const SizedBox(height: 14),
 
-          // === Password con botón mostrar/ocultar ===
           _PasswordInput(
             controller: passwordController,
             hint: 'Contraseña',
             onSubmit: onLogin,
+            errorText: passwordError,
+            isError: passwordError != null,
           ),
           const SizedBox(height: 14),
 
-          // Campo extra requerido por tu lógica (se mantiene)
           _Input(
             controller: usernameController,
             hint: 'Usuario',
             icon: Icons.person_outline,
             onSubmit: onLogin,
+            errorText: usernameError,
+            isError: usernameError != null,
           ),
 
-          // === “¿Olvidaste tu contraseña?” debajo de Usuario ===
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: onForgot, // <-- conectado
+              onPressed: onForgot,
               child: const Text('¿Olvidaste tu contraseña?'),
             ),
           ),
 
           const SizedBox(height: 10),
 
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: isLoading ? null : onLogin,
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 2,
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-              ),
-              child: Ink(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF376AED), Color(0xFF2F55D4)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+          // ======= NUEVO: botón con efecto “shake” en fallo =======
+          _ShakeX(
+            animation: shake,
+            child: SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: isLoading ? null : onLogin,
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  borderRadius: BorderRadius.circular(14),
+                  elevation: 2,
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
                 ),
-                child: Center(
-                  child: isLoading
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text(
-                          'Iniciar',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                child: Ink(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF376AED), Color(0xFF2F55D4)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Center(
+                    child: isLoading
+                        ? const SizedBox(
+                            height: 22,
+                            width: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text(
+                            'Iniciar',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
+                  ),
                 ),
               ),
             ),
           ),
+          // =========================================================
+
           const SizedBox(height: 12),
 
           GestureDetector(
@@ -356,18 +452,7 @@ class _IllustrationCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFFFFFFFF), Color(0xFFF6FAFF)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-            ),
-          ),
-          // Burbujas suaves
+          const PositionedFillGradient(),
           const Positioned(
             top: 40, left: -30,
             child: _Blob(size: 140, c1: Color(0xFFBFD7FF), c2: Color(0xFFE6F0FF)),
@@ -376,7 +461,6 @@ class _IllustrationCard extends StatelessWidget {
             bottom: 60, right: -20,
             child: _Blob(size: 160, c1: Color(0xFFD9E7FF), c2: Color(0xFFF2F7FF)),
           ),
-          // Imagen centrada
           Center(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
@@ -390,6 +474,26 @@ class _IllustrationCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Extract pequeño solo para mantener limpio (no cambia nombres previos)
+class PositionedFillGradient extends StatelessWidget {
+  const PositionedFillGradient({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Positioned.fill(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFFFFFFF), Color(0xFFF6FAFF)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
       ),
     );
   }
@@ -421,6 +525,9 @@ class _Input extends StatelessWidget {
     required this.icon,
     this.obscure = false,
     required this.onSubmit,
+    // ======= NUEVO =======
+    this.errorText,
+    this.isError = false,
   });
 
   final TextEditingController controller;
@@ -429,26 +536,42 @@ class _Input extends StatelessWidget {
   final bool obscure;
   final VoidCallback onSubmit;
 
+  // NUEVO
+  final String? errorText;
+  final bool isError;
+
   @override
   Widget build(BuildContext context) {
+    final baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: Colors.blueGrey.shade100),
+    );
+    final errorBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: Colors.redAccent, width: 1.6),
+    );
+
     return TextField(
       controller: controller,
       obscureText: obscure,
       onSubmitted: (_) => onSubmit(),
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon: Icon(icon, color: Colors.blueGrey.shade400),
+        prefixIcon: Icon(
+          icon,
+          color: isError ? Colors.redAccent : Colors.blueGrey.shade400,
+        ),
         filled: true,
         fillColor: const Color(0xFFFBFCFF),
         contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.blueGrey.shade100),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFF2F55D4), width: 1.6),
-        ),
+        enabledBorder: isError ? errorBorder : baseBorder,
+        focusedBorder: isError
+            ? errorBorder
+            : const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(14)),
+                borderSide: BorderSide(color: Color(0xFF2F55D4), width: 1.6),
+              ),
+        errorText: errorText,
       ),
     );
   }
@@ -460,11 +583,18 @@ class _PasswordInput extends StatefulWidget {
     required this.controller,
     required this.hint,
     required this.onSubmit,
+    // ======= NUEVO =======
+    this.errorText,
+    this.isError = false,
   });
 
   final TextEditingController controller;
   final String hint;
   final VoidCallback onSubmit;
+
+  // NUEVO
+  final String? errorText;
+  final bool isError;
 
   @override
   State<_PasswordInput> createState() => _PasswordInputState();
@@ -475,13 +605,25 @@ class _PasswordInputState extends State<_PasswordInput> {
 
   @override
   Widget build(BuildContext context) {
+    final baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: Colors.blueGrey.shade100),
+    );
+    final errorBorder = const OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(14)),
+      borderSide: BorderSide(color: Colors.redAccent, width: 1.6),
+    );
+
     return TextField(
       controller: widget.controller,
       obscureText: _obscure,
       onSubmitted: (_) => widget.onSubmit(),
       decoration: InputDecoration(
         hintText: widget.hint,
-        prefixIcon: Icon(Icons.lock_outline, color: Colors.blueGrey.shade400),
+        prefixIcon: Icon(
+          Icons.lock_outline,
+          color: widget.isError ? Colors.redAccent : Colors.blueGrey.shade400,
+        ),
         suffixIcon: IconButton(
           tooltip: _obscure ? 'Mostrar contraseña' : 'Ocultar contraseña',
           icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined),
@@ -490,15 +632,37 @@ class _PasswordInputState extends State<_PasswordInput> {
         filled: true,
         fillColor: const Color(0xFFFBFCFF),
         contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.blueGrey.shade100),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFF2F55D4), width: 1.6),
-        ),
+        enabledBorder: widget.isError ? errorBorder : baseBorder,
+        focusedBorder: widget.isError
+            ? errorBorder
+            : const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(14)),
+                borderSide: BorderSide(color: Color(0xFF2F55D4), width: 1.6),
+              ),
+        errorText: widget.errorText,
       ),
+    );
+  }
+}
+
+// ======= NUEVO: widget reutilizable para “shake” horizontal =======
+class _ShakeX extends StatelessWidget {
+  const _ShakeX({required this.child, this.animation});
+  final Widget child;
+  final Animation<double>? animation;
+
+  @override
+  Widget build(BuildContext context) {
+    if (animation == null) return child;
+    return AnimatedBuilder(
+      animation: animation!,
+      builder: (context, child) {
+        // Pequeña oscilación horizontal
+        final t = animation!.value;
+        final dx = math.sin(t * math.pi * 6) * 8; // 3 ciclos, 8px amplitud
+        return Transform.translate(offset: Offset(dx, 0), child: child);
+      },
+      child: child,
     );
   }
 }

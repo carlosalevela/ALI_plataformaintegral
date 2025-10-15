@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
 
+// >>> NUEVO: importa la pantalla explicativa (misma carpeta /screens)
+import 'como_calificar_screen.dart';
 
 const _blue     = Color(0xFF1976D2);
 const _blueDark = Color(0xFF0D47A1);
@@ -128,10 +130,22 @@ class _EstudianteHomeState extends State<EstudianteHome>
                           ? 'Iniciar Test Grado 9'
                           : 'Iniciar Test Grado $grado',
                       onTap: () {
-                        final ruta = (grado == '9')
-                            ? '/test_grado9'
-                            : '/test_grado_10_11';
-                        Navigator.pushNamed(context, ruta);
+                        // >>> NUEVO: primero mostramos la explicación;
+                        // al cerrarla, navegamos al test correspondiente.
+                        Navigator.of(context)
+                            .push(
+                              MaterialPageRoute(
+                                builder: (_) => const ComoCalificarScreen(),
+                                fullscreenDialog: true, // modal de pantalla completa
+                              ),
+                            )
+                            .then((_) {
+                              if (!mounted) return;
+                              final ruta = (grado == '9')
+                                  ? '/test_grado9'
+                                  : '/test_grado_10_11';
+                              Navigator.pushNamed(context, ruta);
+                            });
                       },
                     ),
                   ),
