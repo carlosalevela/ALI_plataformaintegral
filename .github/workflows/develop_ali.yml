@@ -32,11 +32,12 @@ jobs:
           flutter --version
           dart --version
 
-      # ⬅️ Forzamos intl compatible con flutter_localizations (0.19.0)
-      - name: Align intl to 0.19.0 (CI override)
+      # Alinear dependencias del front con Flutter 3.24.x
+      - name: Align pub deps for CI (intl & font_awesome_flutter)
         working-directory: ${{ env.FRONTEND_PATH }}
         run: |
           flutter pub add intl:^0.19.0
+          flutter pub add font_awesome_flutter:10.8.0
 
       - name: Build Flutter Web
         working-directory: ${{ env.FRONTEND_PATH }}
@@ -58,7 +59,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # Respetando tu nombre "requeriments.txt"
+      # OJO: respeta tu archivo "requeriments.txt"
       - name: Create venv & install deps (local check)
         run: |
           python -m venv .venv
