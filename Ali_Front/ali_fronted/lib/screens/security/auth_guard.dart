@@ -4,19 +4,34 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthGuard {
-  /// Lee el access token guardado
+  /// Intenta leer el access token de distintas keys comunes.
   static Future<String?> _readToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('access_token');
+    // Orden de preferencia: 'access_token' -> 'access' -> 'token'
+    final k1 = prefs.getString('access_token');
+    if (k1 != null && k1.isNotEmpty) return k1;
+
+    final k2 = prefs.getString('access');
+    if (k2 != null && k2.isNotEmpty) return k2;
+
+    final k3 = prefs.getString('token');
+    if (k3 != null && k3.isNotEmpty) return k3;
+
+    return null;
   }
 
-  /// Decodifica payload del JWT (sin validar firma)
+  /// Decodifica payload del JWT (sin validar firma). Seguro ante errores.
   static Map<String, dynamic> _decodeJWT(String token) {
-    final parts = token.split('.');
-    if (parts.length != 3) return {};
-    final payload = base64Url.normalize(parts[1]);
-    final decoded = utf8.decode(base64Url.decode(payload));
-    return jsonDecode(decoded) as Map<String, dynamic>;
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return {};
+      final payload = base64Url.normalize(parts[1]);
+      final decoded = utf8.decode(base64Url.decode(payload));
+      final obj = jsonDecode(decoded);
+      return obj is Map<String, dynamic> ? obj : {};
+    } catch (_) {
+      return {};
+    }
   }
 
   /// ¿Está expirado por el claim `exp`?
@@ -26,7 +41,12 @@ class AuthGuard {
       final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       return nowSec >= exp;
     }
-    return false; // si no hay exp, asumimos válido para no romper flujo
+    if (exp is double) {
+      final nowSec = DateTime.now().millisecondsSinceEpoch / 1000.0;
+      return nowSec >= exp;
+    }
+    // Si no hay exp, no bloqueamos (evitamos falsos negativos).
+    return false;
   }
 
   /// ¿Hay sesión válida?
@@ -38,27 +58,45 @@ class AuthGuard {
     return true;
   }
 
-  /// Devuelve rol (si existe en el JWT)
-  static Future<String?> getRole() async {
+  /// Rol desde JWT ('rol') o, si no existe, desde SharedPreferences ('rol').
+  static Future<String?> getRoleRaw() async {
+    final prefs = await SharedPreferences.getInstance();
     final tok = await _readToken();
-    if (tok == null) return null;
-    final payload = _decodeJWT(tok);
-    return payload['rol']?.toString();
+    String? fromJwt;
+    if (tok != null) {
+      final payload = _decodeJWT(tok);
+      final v = payload['rol'];
+      if (v != null) fromJwt = v.toString();
+    }
+    final fromPrefs = prefs.getString('rol');
+    return fromJwt ?? fromPrefs;
   }
 
-  /// Verifica acceso por rol (si no pasas roles, basta con estar logeado)
+  /// Rol normalizado a MAYÚSCULAS y sin espacios.
+  static Future<String?> getRoleNormalized() async {
+    final r = await getRoleRaw();
+    if (r == null) return null;
+    return r.trim().toUpperCase();
+  }
+
+  /// Verifica acceso por rol (si no pasas roles, basta con estar logeado).
   static Future<bool> canAccess({List<String>? roles}) async {
     if (!await isLoggedIn()) return false;
+
     if (roles == null || roles.isEmpty) return true;
-    final r = await getRole();
-    return r != null && roles.contains(r);
+
+    // Normaliza ambos lados
+    final needs = roles.map((e) => e.trim().toUpperCase()).toList();
+    final userRole = await getRoleNormalized();
+
+    return userRole != null && needs.contains(userRole);
   }
 
   /// Úsalo en pantallas (post-frame) para redirigir si no cumple
   static Future<void> redirectIfNotAllowed(
     BuildContext context, {
     List<String>? roles,
-    String loginRouteName = '/login',
+    String loginRouteName = '/',
   }) async {
     if (!await canAccess(roles: roles)) {
       if (!context.mounted) return;
@@ -77,7 +115,7 @@ class ProtectedRoute extends StatelessWidget {
     super.key,
     required this.child,
     this.requireRoles,
-    this.loginRouteName = '/login',
+    this.loginRouteName = '/',
   });
 
   @override
@@ -92,7 +130,7 @@ class ProtectedRoute extends StatelessWidget {
         }
         if (snap.data == true) return child;
 
-        // No permitido → fuera
+        // No permitido → fuera (post-frame para evitar setState durante build)
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (context.mounted) {
             Navigator.of(context).pushNamedAndRemoveUntil(loginRouteName, (_) => false);

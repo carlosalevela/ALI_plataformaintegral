@@ -565,7 +565,7 @@ class ApiService {
   /// 1) Solicitar enlace de recuperación
   Future<Map<String, dynamic>> solicitarRecuperacion(String email) async {
     // OJO: en tu urls.py está escrito con doble "ra": "recuperaracion"
-    final url = Uri.parse('$baseUrl/recuperaracion/contraseña/');
+    final url = Uri.parse('$baseUrl/recuperacion/contraseña/');
 
     try {
       final resp = await http.post(
@@ -600,7 +600,7 @@ class ApiService {
   }) async {
     // En tu proyecto: "recuperacion/contraseña-confirmada" (sin slash final en tu captura).
     // Te dejo con barra final; si te diera 301/404, prueba quitándola.
-    final url = Uri.parse('$baseUrl/recuperacion/contraseña-confirmada/');
+    final url = Uri.parse('$baseUrl/recuperacion/contrasena-confirmada/');
 
     try {
       final resp = await http.post(

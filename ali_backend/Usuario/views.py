@@ -291,22 +291,12 @@ class PasswordResetRequestView(APIView):
                 status=status.HTTP_200_OK
             )
 
-        # 3) Generar uid/token y armar el enlace (USANDO ORIGIN DEL FRONT SI LLEGA)
+        # 3) Generar uid/token y armar el enlace (USANDO URL FIJA DE settings.FRONTEND_RESET_URL)
         uidb64 = urlsafe_base64_encode(smart_bytes(user.pk))
         token = token_generator.make_token(user)
 
-        # ----- BLOQUE NUEVO: origin dinámico + fallback -----
-        client_origin = request.data.get("origin")  # ej: "http://localhost:51988"
-        allowed = getattr(settings, "PASSWORD_RESET_ALLOWED_ORIGINS", [])
-
-        if client_origin in allowed:
-            origin = client_origin.rstrip("/")
-        else:
-            origin = getattr(settings, "FRONTEND_ORIGIN", "http://localhost:5173").rstrip("/")
-
-        path = getattr(settings, "FRONTEND_RESET_PATH", "/#/reset-password")
-        reset_link = f"{origin}{path}?uid={uidb64}&token={token}"
-        # ----- FIN BLOQUE NUEVO -----
+        base_url = getattr(settings, "FRONTEND_RESET_URL", "").rstrip("/")
+        reset_link = f"{base_url}?uid={uidb64}&token={token}" if base_url else f"/?uid={uidb64}&token={token}"
 
         # 4) Construir email (texto + HTML)
         subject = "Recuperación de contraseña - ALI"

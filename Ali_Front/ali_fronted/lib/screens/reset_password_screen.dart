@@ -2,12 +2,9 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
-  /// Ruta sugerida para Web: /reset-password?uid=...&token=...
+  /// Ruta en Web: /recuperacion/contrasena-confirmada?uid=...&token=...
   static const routeName = '/recuperacion/contrasena-confirmada';
 
-  /// También puedes pasar uid/token por arguments al hacer pushNamed:
-  /// Navigator.pushNamed(context, ResetPasswordScreen.routeName,
-  ///   arguments: {'uid': '...', 'token': '...'});
   const ResetPasswordScreen({super.key, this.uid, this.token});
 
   final String? uid;
@@ -32,7 +29,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   void initState() {
     super.initState();
 
-    // 1) Prioridad: uid/token que vengan en el constructor (opcional)
+    // 1) Prioridad: uid/token del constructor (opcional)
     _uid = widget.uid;
     _token = widget.token;
 
@@ -46,11 +43,19 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         }
       }
 
-      // 3) Si aún no vienen, intentamos leerlos de la URL (Flutter Web)
+      // 3) Si aún no vienen, intentamos leerlos de la URL
       if (_uid == null || _token == null) {
-        final qp = Uri.base.queryParameters; // e.g. /reset-password?uid=...&token=...
+        // a) Forma “normal”: /ruta?uid=...&token=...
+        final qp = Uri.base.queryParameters;
         _uid ??= qp['uid'];
         _token ??= qp['token'];
+
+        // b) Fallback cuando los params van tras el hash:  #/ruta?uid=...&token=...
+        if ((_uid == null || _token == null) && Uri.base.fragment.isNotEmpty) {
+          final fragUri = Uri.parse(Uri.base.fragment);
+          _uid ??= fragUri.queryParameters['uid'];
+          _token ??= fragUri.queryParameters['token'];
+        }
       }
 
       // Si faltan, mostramos error visual (pero permitimos seguir por si pegan manual)
@@ -92,7 +97,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     final resp = await apiService.confirmarRecuperacion(
       uid: _uid!,
       token: _token!,
-      newPassword: p1, // usamos new_password en el servicio como definiste
+      newPassword: p1,
     );
 
     if (!mounted) return;
@@ -105,7 +110,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      Navigator.pushReplacementNamed(context, '/'); // o '/login' si lo usas así
+      Navigator.pushReplacementNamed(context, '/');
     } else {
       final msg = resp['message']?.toString() ?? 'No se pudo actualizar la contraseña.';
       setState(() => _error = msg);
@@ -148,9 +153,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text(
+                const Text(
                   'Restablecer contraseña',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Color(0xFF1C274C),
                     fontWeight: FontWeight.w700,
                     fontSize: 22,
@@ -286,9 +291,9 @@ class _PasswordFieldState extends State<_PasswordField> {
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: Colors.blueGrey.shade100),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFF2F55D4), width: 1.6),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(14)),
+          borderSide: BorderSide(color: Color(0xFF2F55D4), width: 1.6),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -299,7 +304,6 @@ class _PasswordFieldState extends State<_PasswordField> {
   }
 }
 
-// Misma deco card que usaste en Login
 final _cardDeco = BoxDecoration(
   color: Colors.white,
   borderRadius: BorderRadius.circular(22),
