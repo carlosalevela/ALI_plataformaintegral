@@ -1,14 +1,24 @@
 import 'dart:convert';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'estudiante_home.dart';
 
+/// Paleta sobria
+const _bgPage    = Color(0xFFF8F9FB);
+const _ink       = Color(0xFF0F172A);
+const _muted     = Color(0xFF6B7280);
+const _brand     = Color(0xFF1465BB);
+const _card      = Colors.white;
+const _sectionAlt= Color(0xFFF1F5F9);
+const _footer    = Color(0xFF0B2447);
+
+/// Logo (reemplaza por tu ruta si es distinta)
+const _logoAsset = 'assets/logo_ali.png';
+
 class ResultadoTest1011Screen extends StatefulWidget {
   final Map<String, String> respuestas; // A/B/C/D
-  final String resultado;               // puede venir como string largo o JSON
+  final String resultado;               // string o JSON
 
   const ResultadoTest1011Screen({
     Key? key,
@@ -26,60 +36,39 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
   late IconData icono;
   late Color accentColor;
 
-  late String carreraLabel; // etiqueta limpia para mostrar
-  late String explicacion;  // explicación legible
+  late String carreraLabel;
+  late String explicacion;
 
-  // ---------------- Animaciones ----------------
   late final AnimationController _bounceCtl =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..forward();
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..forward();
   late final Animation<double> _bounceAnim =
-      CurvedAnimation(parent: _bounceCtl, curve: Curves.elasticOut);
-
-  late final AnimationController _bgCtl =
-      AnimationController(vsync: this, duration: const Duration(seconds: 8))..repeat(reverse: true);
-
-  late final AnimationController _btnCtl =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 280), upperBound: .10);
+      CurvedAnimation(parent: _bounceCtl, curve: Curves.easeOutBack);
 
   @override
   void initState() {
     super.initState();
     _calcularPorcentajes();
 
-    // 1) Carrera (etiqueta amigable)
     carreraLabel = _extractCareerLabel(widget.resultado).trim();
     if (carreraLabel.isEmpty) {
       carreraLabel = _pretty(widget.resultado).trim();
     }
 
-    // 2) Explicación
     explicacion = _extractExplanation(widget.resultado).trim();
     if (explicacion.isEmpty) {
-      explicacion =
-          'Pronto verás una explicación personalizada generada por ALI según tus intereses.';
+      explicacion = 'Estamos preparando tu explicación personalizada según tus respuestas. ¡Vuelve pronto!';
     }
 
-    // 3) Icono y color según carrera
     _configurarIconoYColor(carreraLabel);
   }
 
   @override
   void dispose() {
     _bounceCtl.dispose();
-    _bgCtl.dispose();
-    _btnCtl.dispose();
     super.dispose();
   }
 
-  // ---------------- Helpers de título ----------------
-  String _tituloNormalizadoCarrera(String raw) {
-    const prefijo = 'Carrera sugerida por ALI:';
-    final s = raw.trim();
-    if (s.toLowerCase().startsWith(prefijo.toLowerCase())) return s;
-    return '$prefijo $s';
-  }
-
-  // ---------------- Porcentajes A/B/C/D ----------------
+  // --------- Porcentajes A/B/C/D ---------
   void _calcularPorcentajes() {
     final conteo = {'A': 0, 'B': 0, 'C': 0, 'D': 0};
     for (final r in widget.respuestas.values) {
@@ -89,11 +78,11 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
     porcentajes = {for (final k in conteo.keys) k: (conteo[k]! / total * 100).toDouble()};
   }
 
-  // ---------------- Helpers de texto (acentos/mojibake) ----------------
+  // --------- Helpers de texto ---------
   String _pretty(String s) {
     if (s.contains(RegExp(r'[ÃÂ]'))) {
       try {
-        return utf8.decode(latin1.encode(s), allowMalformed: true);
+        return utf8.decode(const Latin1Codec().encode(s), allowMalformed: true);
       } catch (_) {}
     }
     return s;
@@ -124,10 +113,9 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
 
     final norm = _stripDiacritics(t.toLowerCase());
     const keys = [
-      'ingenier', 'disen', 'diseñ', 'medic', 'derech', 'psicol', 'admin',
-      'contad', 'sistem', 'softw', 'biolog', 'quimic', 'fisic', 'docen',
-      'educac', 'natur', 'finanz', 'marketing', 'comunic', 'arquite',
-      'enfermer', 'graf', 'turism', 'gastron', 'veterin', 'agro', 'comerc'
+      'ingenier','disen','diseñ','medic','derech','psicol','admin','contad','sistem','softw',
+      'biolog','quimic','fisic','docen','educac','finanz','marketing','comunic','arquite',
+      'enfermer','graf','turism','gastron','veterin','agro','comerc','natur'
     ];
     return keys.any((k) => norm.contains(k));
   }
@@ -136,8 +124,8 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
     if (dec is String) return _pretty(dec);
     if (dec is Map) {
       for (final k in [
-        'carrera','carrera_sugerida','nombre_carrera','resultado','recomendacion',
-        'recomendación','label','titulo','nombre'
+        'carrera','carrera_sugerida','nombre_carrera','resultado','recomendacion','recomendación',
+        'label','titulo','nombre'
       ]) {
         final v = dec[k];
         if (v is String && v.trim().isNotEmpty) return _pretty(v);
@@ -171,7 +159,6 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
     final s = _pretty(raw).trim();
     if (s.isEmpty) return '';
 
-    // JSON
     if ((s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'))) {
       try {
         final dec = jsonDecode(s);
@@ -180,7 +167,6 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
       } catch (_) {}
     }
 
-    // Texto plano con "Carrera recomendada:"
     final lines = s.split(RegExp(r'\r?\n')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     for (final line in lines) {
       final norm = _norm(line);
@@ -195,7 +181,6 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
       }
     }
 
-    // Primera línea plausible
     for (final line in lines) {
       if (_looksLikeCareer(line)) return line;
     }
@@ -207,7 +192,6 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
     final s = _pretty(raw).trim();
     if (s.isEmpty) return '';
 
-    // JSON: busca campos comunes
     if ((s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'))) {
       try {
         final dec = jsonDecode(s);
@@ -258,7 +242,6 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
       } catch (_) {}
     }
 
-    // Texto plano con "Explicación:"
     final lines = s.split(RegExp(r'\r?\n'));
     final joined = lines.join('\n');
     final expIdx = _norm(joined).indexOf('explicacion');
@@ -271,7 +254,6 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
       }
     }
 
-    // Fallbacks
     if (lines.isNotEmpty && _looksLikeCareer(lines.first)) {
       final rest = lines.skip(1).join(' ').trim();
       if (rest.length > 15) return _pretty(rest);
@@ -281,7 +263,7 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
     return '';
   }
 
-  // ---------------- Icono & color por carrera ----------------
+  // --------- Icono & color por carrera ---------
   void _configurarIconoYColor(String resultadoEtiqueta) {
     final c = _norm(resultadoEtiqueta);
 
@@ -345,466 +327,346 @@ class _ResultadoTest1011ScreenState extends State<ResultadoTest1011Screen>
     accentColor = pickColor();
   }
 
-  // ---------------- UI ----------------
+  // --------- UI ---------
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width >= 700;
-    final textScale = MediaQuery.textScaleFactorOf(context);
-
-    const primary1 = Color(0xFF1465bb);
-    const primary2 = Color(0xFF0f4d8c);
-
-    final tituloHero = _tituloNormalizadoCarrera(_decodeUTF8(carreraLabel));
+    final isWide = MediaQuery.of(context).size.width >= 900;
+    final carrera = _decodeUTF8(carreraLabel);
+    final desc    = _decodeUTF8(explicacion);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: Stack(
-        children: [
-          AnimatedBuilder(
-            animation: _bgCtl,
-            builder: (_, __) => CustomPaint(
-              painter: _WavePainter(_bgCtl.value),
-              size: MediaQuery.of(context).size,
+      backgroundColor: _bgPage,
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            // ===== Header (solo logo + "ALI ORIENTADOR" + Volver al inicio) =====
+            SliverToBoxAdapter(
+              child: _Header(
+                onHome: _volverInicio,
+              ),
             ),
-          ),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _ShimmerText(
-                    text: 'Panel de Recomendación',
-                    style: Theme.of(context).textTheme.headlineSmall!
-                        .copyWith(fontWeight: FontWeight.w800, color: Colors.grey[900]!),
-                  ),
-                  const SizedBox(height: 6),
-                  Text('Encuentra la carrera perfecta para ti',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[600])),
-                  const SizedBox(height: 22),
 
-                  // ---------- HERO ----------
-                  ScaleTransition(
-                    scale: _bounceAnim,
-                    child: _GlassCard(
-                      gradientColors: const [Color(0x661465bb), Color(0x660f4d8c)],
+            // ===== Hero (sin botón “Ver detalle”) =====
+            SliverToBoxAdapter(
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: isWide ? 32 : 16, vertical: 28),
+                color: _card,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    ScaleTransition(
+                      scale: _bounceAnim,
+                      child: Container(
+                        width: 64, height: 64,
+                        decoration: BoxDecoration(
+                          color: accentColor.withOpacity(.12),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(icono, color: accentColor, size: 34),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Container(
-                                width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(.18),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Icon(icono, color: Colors.white, size: 34),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Text(
-                                  tituloHero,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w900,
-                                        height: 1.15,
-                                      ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: _OutlinePillButton(
-                              label: 'Carrera sugerida',
-                              icon: FontAwesomeIcons.circleInfo,
-                              onTap: () => _openCarreraDialogCentered(
-                                icono: icono,
-                                color: accentColor,
-                                titulo: tituloHero,
-                                explicacion: _decodeUTF8(explicacion),
-                              ),
-                            ),
+                          Text('Resultado de tu test',
+                              style: Theme.of(context).textTheme.titleMedium!
+                                  .copyWith(color: _muted, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 4),
+                          Text(
+                            carrera,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                                color: _ink, fontWeight: FontWeight.w800, height: 1.1),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 26),
-
-                  // ---------- GRID ----------
-                  GridView(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: isWide ? 2 : 1,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: isWide ? 1.35 : 1.02,
-                    ),
-                    children: [
-                      _WhiteCard(
-                        title: 'Recomendación',
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(children: [
-                              Container(
-                                width: 9,
-                                height: 9,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: primary1,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '🌟 Próximamente tips personalizados',
-                                style: TextStyle(
-                                  fontSize: 13 * textScale,
-                                  fontStyle: FontStyle.italic,
-                                  color: Colors.black45,
-                                ),
-                              ),
-                            ]),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: [
-                                const _ChipTag(text: 'Área sugerida', color: primary1),
-                                _ChipTag(text: _decodeUTF8(carreraLabel), color: accentColor),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      _WhiteCard(
-                        title: 'Estadísticas del Test',
-                        child: _StatsGrid(pct: {
-                          'Me gusta': porcentajes['A'] ?? 0,
-                          'Me interesa': porcentajes['B'] ?? 0,
-                          'No me gusta': porcentajes['C'] ?? 0,
-                          'No me interesa': porcentajes['D'] ?? 0,
-                        }),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 34),
-
-                  // ---------- BOTÓN VOLVER ----------
-                  Center(
-                    child: GestureDetector(
-                      onTapDown: (_) => _btnCtl.forward(),
-                      onTapCancel: () => _btnCtl.reverse(),
-                      onTapUp: (_) async {
-                        _btnCtl.reverse();
-                        final prefs = await SharedPreferences.getInstance();
-                        final id = prefs.getInt('user_id');
-                        if (id != null) {
-                          await prefs.remove('test_grado_1011_respuestas_$id');
-                        }
-                        if (!mounted) return;
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(builder: (_) => const EstudianteHome()),
-                          (_) => false,
-                        );
-                      },
-                      child: AnimatedBuilder(
-                        animation: _btnCtl,
-                        builder: (_, child) => Transform.scale(scale: 1 - _btnCtl.value, child: child),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(40),
-                            gradient: const LinearGradient(
-                              colors: [primary1, primary2],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: primary2.withOpacity(.35),
-                                blurRadius: 22,
-                                offset: const Offset(0, 10),
-                              )
-                            ],
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 46, vertical: 20),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              FaIcon(FontAwesomeIcons.houseChimney, color: Colors.white, size: 20),
-                              SizedBox(width: 16),
-                              Text('Volver al inicio',
-                                  style: TextStyle(
-                                      color: Colors.white, fontWeight: FontWeight.w700, fontSize: 17)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  // ---------------- MODAL CENTRADO: SOLO EXPLICACIÓN ----------------
-  void _openCarreraDialogCentered({
-    required IconData icono,
-    required Color color,
-    required String titulo,
-    required String explicacion,
-  }) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierColor: Colors.black54,
-      builder: (ctx) {
-        final maxW = MediaQuery.of(ctx).size.width;
-        final dialogW = (maxW < 420.0 ? (maxW - 24.0) : (maxW < 920.0 ? 560.0 : 720.0))
-            .clamp(320.0, 720.0);
-
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
-          backgroundColor: Colors.transparent,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: dialogW),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: Material(
-                  color: Colors.white,
+            // ===== “Sobre la recomendación” =====
+            SliverToBoxAdapter(
+              child: Container(
+                color: _bgPage,
+                padding: EdgeInsets.symmetric(horizontal: isWide ? 32 : 16, vertical: 26),
+                child: _SurfaceCard(
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.fromLTRB(18, 18, 8, 16),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [color.withOpacity(.95), const Color(0xFF0f4d8c)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(icono, color: Colors.white, size: 28),
-                            ),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: Text('Carrera sugerida',
-                                  style: TextStyle(
-                                      color: Colors.white70, fontWeight: FontWeight.w600)),
-                            ),
-                            IconButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              icon: const Icon(Icons.close, color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Título
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            titulo,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              height: 1.1,
-                              color: Color(0xFF0F172A),
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Contenido (solo explicación)
-                      Flexible(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (explicacion.trim().isNotEmpty) ...[
-                                Text(explicacion, style: const TextStyle(height: 1.45)),
-                                const SizedBox(height: 16),
-                              ],
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: () => Navigator.pop(ctx),
-                                      icon: const Icon(Icons.check_circle_outline),
-                                      label: const Text('Entendido'),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: const Color(0xFF0f4d8c),
-                                        side: const BorderSide(color: Color(0xFF0f4d8c)),
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12)),
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
+                      Text('Sobre la recomendación',
+                          style: Theme.of(context).textTheme.titleMedium!
+                              .copyWith(fontWeight: FontWeight.w700, color: _ink)),
+                      const SizedBox(height: 10),
+                      _ExpandableText(
+                        text: desc.isEmpty
+                            ? 'Pronto verás una explicación personalizada generada por ALI según tus intereses.'
+                            : desc,
+                        maxLines: 5,
+                        textStyle: Theme.of(context).textTheme.bodyMedium!
+                            .copyWith(height: 1.45, color: _ink),
+                        moreLabel: 'Ver más',
+                        lessLabel: 'Ver menos',
                       ),
                     ],
                   ),
                 ),
               ),
             ),
-          ),
-        );
-      },
+
+            // ===== Acciones recomendadas =====
+            SliverToBoxAdapter(
+              child: Container(
+                color: _sectionAlt,
+                padding: EdgeInsets.symmetric(horizontal: isWide ? 32 : 16, vertical: 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Acciones recomendadas',
+                        style: Theme.of(context).textTheme.titleMedium!
+                            .copyWith(fontWeight: FontWeight.w700, color: _ink)),
+                    const SizedBox(height: 16),
+                    LayoutBuilder(
+                      builder: (ctx, cts) {
+                        final cross = cts.maxWidth >= 980 ? 3 : (cts.maxWidth >= 620 ? 2 : 1);
+                        return GridView.count(
+                          crossAxisCount: cross,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          mainAxisSpacing: 14,
+                          crossAxisSpacing: 14,
+                          childAspectRatio: 1.6,
+                          children: [
+                            _ServiceCard(
+                              icon: FontAwesomeIcons.calendarCheck,
+                              title: 'Agendar asesoría',
+                              desc: 'Reserva una charla rápida para resolver dudas de la carrera.',
+                              cta: 'Agendar →',
+                              onTap: _openContact,
+                            ),
+                            _ServiceCard(
+                              icon: FontAwesomeIcons.filePdf,
+                              title: 'Guardar en PDF',
+                              desc: 'Exporta tu recomendación y estadísticas para compartir.',
+                              cta: 'Exportar →',
+                              onTap: _notImplemented,
+                            ),
+                            _ServiceCard(
+                              icon: FontAwesomeIcons.magnifyingGlass,
+                              title: 'Explorar áreas afines',
+                              desc: 'Descubre carreras similares según tus intereses.',
+                              cta: 'Explorar →',
+                              onTap: _notImplemented,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ===== Estadísticas =====
+            SliverToBoxAdapter(
+              child: Container(
+                color: _bgPage,
+                padding: EdgeInsets.symmetric(horizontal: isWide ? 32 : 16, vertical: 28),
+                child: _SurfaceCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Estadísticas del test',
+                          style: Theme.of(context).textTheme.titleMedium!
+                              .copyWith(fontWeight: FontWeight.w700, color: _ink)),
+                      const SizedBox(height: 16),
+                      _StatsGrid(pct: {
+                        'Me gusta': porcentajes['A'] ?? 0,
+                        'Me interesa': porcentajes['B'] ?? 0,
+                        'No me gusta': porcentajes['C'] ?? 0,
+                        'No me interesa': porcentajes['D'] ?? 0,
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // ===== Footer =====
+            SliverToBoxAdapter(child: _Footer()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --------- Acciones ---------
+  Future<void> _volverInicio() async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getInt('user_id');
+    if (id != null) {
+      await prefs.remove('test_grado_1011_respuestas_$id');
+    }
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const EstudianteHome()),
+      (_) => false,
+    );
+  }
+
+  void _openContact() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 46, height: 5, decoration: BoxDecoration(
+                color: Colors.black12, borderRadius: BorderRadius.circular(999))),
+            const SizedBox(height: 14),
+            Text('Contáctanos', style: Theme.of(context).textTheme.titleMedium!
+                .copyWith(fontWeight: FontWeight.w700, color: _ink)),
+            const SizedBox(height: 10),
+            ListTile(
+              leading: const Icon(Icons.mail_outline, color: _brand),
+              title: const Text('Escríbenos por correo'),
+              subtitle: const Text('soporte@ali-orientadora.edu.co'),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.chat_bubble_outline, color: _brand),
+              title: const Text('Chat institucional'),
+              subtitle: const Text('Lunes a viernes, 8:00–17:00'),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _notImplemented() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Estamos construyendo esta opción.')),
     );
   }
 }
 
 /* ========================= WIDGETS PRIVADOS ========================= */
 
-class _GlassCard extends StatelessWidget {
-  final List<Color> gradientColors;
+/// Header simplificado: logo + texto “ALI ORIENTADOR” y botón “Volver al inicio”
+class _Header extends StatelessWidget {
+  final VoidCallback onHome;
+  const _Header({required this.onHome});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: _card,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Row(
+            children: [
+              Image.asset(
+                _logoAsset,
+                height: 28,
+                fit: BoxFit.contain,
+                semanticLabel: 'ALI ORIENTADOR',
+                errorBuilder: (_, __, ___) => const Icon(Icons.auto_graph, color: _brand),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'ALI ORIENTADOR',
+                style: TextStyle(
+                  color: _ink,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: .2,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          OutlinedButton.icon(
+            onPressed: onHome,
+            icon: const Icon(Icons.home_outlined, size: 16),
+            label: const Text('Volver al inicio'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _brand,
+              side: const BorderSide(color: _brand),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SurfaceCard extends StatelessWidget {
   final Widget child;
-  const _GlassCard({required this.gradientColors, required this.child});
+  const _SurfaceCard({required this.child});
 
   @override
   Widget build(BuildContext context) => Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-              colors: gradientColors, begin: Alignment.topLeft, end: Alignment.bottomRight),
-          borderRadius: BorderRadius.circular(26),
-          boxShadow: [
-            BoxShadow(
-              color: gradientColors.last.withOpacity(.35),
-              blurRadius: 24,
-              offset: const Offset(0, 10),
-            )
+          color: _card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.black12.withOpacity(.05)),
+          boxShadow: const [
+            BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, 6)),
           ],
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+        padding: const EdgeInsets.all(18),
         child: child,
       );
 }
 
-class _WhiteCard extends StatefulWidget {
-  final String title;
-  final Widget child;
-  const _WhiteCard({required this.title, required this.child});
-  @override
-  State<_WhiteCard> createState() => _WhiteCardState();
-}
-
-class _WhiteCardState extends State<_WhiteCard> {
-  double _dy = 0;
-  void _setDy(double v) => setState(() => _dy = v);
-
-  @override
-  Widget build(BuildContext context) => MouseRegion(
-        onEnter: (_) => _setDy(-6),
-        onExit: (_) => _setDy(0),
-        child: GestureDetector(
-          onTapDown: (_) => _setDy(-6),
-          onTapUp: (_) => _setDy(0),
-          onTapCancel: () => _setDy(0),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 260),
-            transform: Matrix4.translationValues(0, _dy, 0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 14, offset: const Offset(0, 5))
-              ],
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(widget.title,
-                    style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 16),
-                widget.child,
-              ],
-            ),
-          ),
-        ),
-      );
-}
-
-class _ChipTag extends StatelessWidget {
-  final String text;
-  final Color color;
-  const _ChipTag({required this.text, required this.color});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(.1),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withOpacity(.35)),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(color: color.darken(0.1), fontWeight: FontWeight.w600, fontSize: 12),
-        ),
-      );
-}
-
-class _OutlinePillButton extends StatelessWidget {
-  final String label;
+class _ServiceCard extends StatelessWidget {
   final IconData icon;
-  final VoidCallback? onTap;
-  const _OutlinePillButton({required this.label, required this.icon, this.onTap});
+  final String title;
+  final String desc;
+  final String cta;
+  final VoidCallback onTap;
+  const _ServiceCard({
+    required this.icon,
+    required this.title,
+    required this.desc,
+    required this.cta,
+    required this.onTap,
+  });
+
   @override
-  Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(40),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(40),
-            border: Border.all(color: Colors.white.withOpacity(.75), width: 1.2),
-            color: Colors.white.withOpacity(.08),
+  Widget build(BuildContext context) {
+    return _SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: _brand, size: 22),
+          const SizedBox(height: 10),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w800, color: _ink)),
+          const SizedBox(height: 6),
+          Expanded(child: Text(desc, style: const TextStyle(color: _muted, height: 1.4))),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: onTap,
+            style: TextButton.styleFrom(foregroundColor: _brand, padding: EdgeInsets.zero),
+            child: Text(cta, style: const TextStyle(fontWeight: FontWeight.w700)),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              FaIcon(icon, color: Colors.white, size: 14),
-              const SizedBox(width: 8),
-              Text(label,
-                  style:
-                      const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12.5)),
-            ],
-          ),
-        ),
-      );
+        ],
+      ),
+    );
+  }
 }
 
 class _StatsGrid extends StatelessWidget {
@@ -819,10 +681,11 @@ class _StatsGrid extends StatelessWidget {
       'No me gusta': Colors.redAccent,
       'No me interesa': Colors.grey,
     };
+
     return Wrap(
-      alignment: WrapAlignment.center,
-      runSpacing: 18,
-      spacing: 18,
+      alignment: WrapAlignment.start,
+      runSpacing: 16,
+      spacing: 16,
       children: col.keys.map((k) {
         return _CircleStat(
           label: k,
@@ -862,8 +725,8 @@ class _CircleStat extends StatelessWidget {
       children: [
         TweenAnimationBuilder<double>(
           tween: Tween(begin: 0, end: pct),
-          duration: const Duration(milliseconds: 900),
-          curve: Curves.easeOutBack,
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeOutCubic,
           builder: (_, v, __) => SizedBox(
             width: sz,
             height: sz,
@@ -875,115 +738,70 @@ class _CircleStat extends StatelessWidget {
                   height: sz,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: RadialGradient(colors: [color.withOpacity(.15), Colors.white]),
+                    color: color.withOpacity(.10),
                   ),
                 ),
                 SizedBox(
-                  width: sz,
-                  height: sz,
+                  width: sz, height: sz,
                   child: CircularProgressIndicator(
                     value: v,
-                    strokeWidth: 8,
-                    backgroundColor: Colors.grey.withOpacity(.15),
+                    strokeWidth: 7,
+                    backgroundColor: Colors.black12.withOpacity(.06),
                     valueColor: AlwaysStoppedAnimation(color),
                   ),
                 ),
-                FaIcon(icon, color: color, size: 22),
+                FaIcon(icon, color: color, size: 20),
               ],
             ),
           ),
         ),
         const SizedBox(height: 6),
         Text('${value.toStringAsFixed(0)}%',
-            style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 14)),
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.black54)),
+            style: TextStyle(fontWeight: FontWeight.w800, color: color, fontSize: 14)),
+        Text(label, style: const TextStyle(fontSize: 11, color: _muted)),
       ],
     );
   }
 }
 
-class _ShimmerText extends StatefulWidget {
-  final String text;
-  final TextStyle style;
-  const _ShimmerText({required this.text, required this.style});
+class _Footer extends StatelessWidget {
   @override
-  State<_ShimmerText> createState() => _ShimmerTextState();
+  Widget build(BuildContext context) {
+    return Container(
+      color: _footer,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          // Compacto: logo + copy
+          _FooterRow(),
+          SizedBox(height: 12),
+          Divider(color: Colors.white24, height: 1),
+          SizedBox(height: 12),
+          Text('© 2025 ALI Orientadora', style: TextStyle(color: Colors.white70, fontSize: 12)),
+        ],
+      ),
+    );
+  }
 }
 
-class _ShimmerTextState extends State<_ShimmerText>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctl =
-      AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
+class _FooterRow extends StatelessWidget {
+  const _FooterRow();
+
   @override
-  void dispose() {
-    _ctl.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(Icons.auto_graph, color: Colors.white),
+        const SizedBox(width: 8),
+        const Text('ALI Orientadora',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+        const Spacer(),
+        const Text('Acompañamos tus decisiones con datos y orientación.',
+            style: TextStyle(color: Colors.white70)),
+      ],
+    );
   }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-        animation: _ctl,
-        builder: (_, __) {
-          final gradient = LinearGradient(
-            colors: [Colors.grey[300]!, Colors.grey[100]!, Colors.grey[300]!],
-            stops: const [0.2, 0.5, 0.8],
-            begin: Alignment(-1 + _ctl.value * 2, 0),
-            end: Alignment(-1 + _ctl.value * 2 + 1, 0),
-          );
-          return ShaderMask(
-            shaderCallback: gradient.createShader,
-            child: Text(
-              widget.text,
-              style: widget.style,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          );
-        },
-      );
-}
-
-class _WavePainter extends CustomPainter {
-  final double t;
-  _WavePainter(this.t);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final h = size.height;
-
-    final path1 = Path()..moveTo(0, h * .25);
-    for (double x = 0; x <= size.width; x++) {
-      final y = h * .25 + math.sin((x / size.width * 2 * math.pi) + t * 2 * math.pi) * 20;
-      path1.lineTo(x, y);
-    }
-    path1..lineTo(size.width, 0)..lineTo(0, 0)..close();
-
-    final paint1 = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0x331465bb), Color(0x330f4d8c)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTRB(0, 0, size.width, h));
-    canvas.drawPath(path1, paint1);
-
-    final path2 = Path()..moveTo(0, h * .30);
-    for (double x = 0; x <= size.width; x++) {
-      final y = h * .30 + math.sin((x / size.width * 2 * math.pi) + t * 2 * math.pi + math.pi) * 30;
-      path2.lineTo(x, y);
-    }
-    path2..lineTo(size.width, 0)..lineTo(0, 0)..close();
-
-    final paint2 = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0x221465bb), Color(0x220f4d8c)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTRB(0, 0, size.width, h));
-    canvas.drawPath(path2, paint2);
-  }
-
-  @override
-  bool shouldRepaint(covariant _WavePainter oldDelegate) => oldDelegate.t != t;
 }
 
 // -------- Texto expandible reutilizable --------
@@ -1026,18 +844,10 @@ class _ExpandableTextState extends State<_ExpandableText> {
           onTap: () => setState(() => expanded = !expanded),
           child: Text(
             expanded ? widget.lessLabel : widget.moreLabel,
-            style: style.copyWith(color: const Color(0xFF1465bb), fontWeight: FontWeight.w700),
+            style: style.copyWith(color: _brand, fontWeight: FontWeight.w700),
           ),
         ),
       ],
     );
-  }
-}
-
-extension _ColorX on Color {
-  Color darken([double amount = .1]) {
-    assert(amount >= 0 && amount <= 1);
-    final f = 1 - amount;
-    return Color.fromARGB(alpha, (red * f).round(), (green * f).round(), (blue * f).round());
   }
 }

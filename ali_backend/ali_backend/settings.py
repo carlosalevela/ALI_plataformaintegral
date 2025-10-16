@@ -32,7 +32,7 @@ SECRET_KEY = 'django-insecure-8m$ln1spycveqfeoks27lhl#x+t-fd*93empiq(%*e7s%$m75!
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "testserver"]
 
 
 # Application definition
@@ -111,9 +111,9 @@ WSGI_APPLICATION = 'ali_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'bd_ali',  # Nombre de la base de datos (igual)
+        'NAME': 'psicoorientacion_bd',  # Nombre de la base de datos (igual)
         'USER': 'postgres',                 # Usuario de PostgreSQL (puede ser 'postgres' si usas el default)
-        'PASSWORD': 'lina123',       # Misma contraseña
+        'PASSWORD': 'Volcano21!',       # Misma contraseña
         'HOST': 'localhost',            # O IP del servidor
         'PORT': '5432',                 # Puerto por defecto de PostgreSQL
     }

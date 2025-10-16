@@ -20,7 +20,7 @@ class _TestGrado9PageState extends State<TestGrado9Page>
   static const Color azulAcento      = Color(0xFF4FC3F7); // acento / barras
 
   // ---------------------- 57 preguntas completas
-      final List<String> preguntas = [
+  final List<String> preguntas = [
     // COMERCIO — Emprendimiento y Fomento Empresarial (5)
     '¿Te gustaría aprender a organizar gastos, tareas y avances de un proyecto sencillo?',
     'En tu familia, colegio o barrio, ¿te gustaría identificar necesidades y pensar soluciones simples y prácticas?',
@@ -105,7 +105,6 @@ class _TestGrado9PageState extends State<TestGrado9Page>
     'A': 'Me gusta',
     'B': 'Me interesa',
     'C': 'No me gusta',
-    'D': 'No me interesa',
   };
 
   final Map<String, String> respuestas = {};
@@ -123,10 +122,17 @@ class _TestGrado9PageState extends State<TestGrado9Page>
     final prefs = await SharedPreferences.getInstance();
     final savedIndex = prefs.getInt('grado9_pregunta_actual') ?? 0;
     final savedResp = prefs.getString('grado9_respuestas');
+
+    // Protege índice por si cambió el número total de preguntas
+    final nuevoIndex = savedIndex.clamp(0, preguntas.length - 1);
+
+    setState(() {
+      preguntaActual = nuevoIndex;
+    });
+
     if (savedResp != null) {
       final Map<String, dynamic> respDecoded = jsonDecode(savedResp);
       setState(() {
-        preguntaActual = savedIndex;
         respuestas.addAll(respDecoded.map((k, v) => MapEntry(k, v.toString())));
       });
     }
@@ -187,17 +193,19 @@ class _TestGrado9PageState extends State<TestGrado9Page>
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       final resultado = data['resultado'].toString();
 
-      final contador = {'A': 0, 'B': 0, 'C': 0, 'D': 0};
-      respuestas.values.forEach((v) {
-        if (contador.containsKey(v)) contador[v] = contador[v]! + 1;
-      });
-      final total = respuestas.length;
+      // ---- Ajuste a 3 opciones (A, B, C)
+      final contador = {'A': 0, 'B': 0, 'C': 0};
+      for (final v in respuestas.values) {
+        if (contador.containsKey(v)) {
+          contador[v] = contador[v]! + 1;
+        }
+      }
+      final total = respuestas.isEmpty ? 1 : respuestas.length; // evita /0
 
       final porcentajes = {
         'Me gusta': (contador['A']! * 100 / total),
         'Me interesa': (contador['B']! * 100 / total),
         'No me gusta': (contador['C']! * 100 / total),
-        'No me interesa': (contador['D']! * 100 / total),
       };
 
       Navigator.pushReplacement(

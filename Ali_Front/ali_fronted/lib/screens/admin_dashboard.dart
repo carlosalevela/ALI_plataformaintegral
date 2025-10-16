@@ -26,6 +26,12 @@ import '../services/api_service.dart';
 import 'usuarios_screen.dart';
 import 'estadisticas_screen.dart';
 
+// ────────────────────────────────────────────────────────────────
+// Totales por test (evita números mágicos en progreso)
+const int kTotalPreguntas9 = 57;
+const int kTotalPreguntas10y11 = 40;
+// ────────────────────────────────────────────────────────────────
+
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
   @override
@@ -126,7 +132,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         final uid = (al['id'] as num).toInt();
         final testEnProg = m9[uid];
         if (testEnProg != null) {
-          final nuevo = _fmtProgreso(testEnProg, total: 40);
+          final nuevo = _fmtProgreso(testEnProg, total: kTotalPreguntas9); // ← 57 para 9°
           if (al['progreso'] != nuevo) {
             setState(() => al['progreso'] = nuevo);
           }
@@ -167,7 +173,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         final uid = (al['id'] as num).toInt();
         final testEnProg = m1011[uid];
         if (testEnProg != null) {
-          final nuevo = _fmtProgreso(testEnProg, total: 40);
+          final nuevo = _fmtProgreso(testEnProg, total: kTotalPreguntas10y11); // ← 40 para 10/11
           if (al['progreso'] != nuevo) {
             setState(() => al['progreso'] = nuevo);
           }
@@ -244,7 +250,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         }
 
         if (usr['grado'] == 9) {
-          final info = await apiService.progresoUsuarioGrado9(usr['id'], total: 40);
+          final info = await apiService.progresoUsuarioGrado9(usr['id'], total: kTotalPreguntas9); // ← 57
           usr['progreso'] = info['progreso'] ?? '—';
           usr['ultimaRecomendacion'] = info['ultimaRecomendacion'] ?? '—';
 
@@ -253,14 +259,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
             if (tests.isNotEmpty) {
               final det = await apiService.fetchResultadoTest9PorId(tests.first['id']);
               usr['ultimaRecomendacion'] = det['resultado'] ?? '—';
-              usr['progreso'] = usr['progreso'] == '—' ? _fmt(tests.first, total: 40) : usr['progreso'];
+              usr['progreso'] = usr['progreso'] == '—' ? _fmt(tests.first, total: kTotalPreguntas9) : usr['progreso'];
             }
           }
           return usr;
         }
 
         if (usr['grado'] == 10 || usr['grado'] == 11) {
-          final info = await apiService.progresoUsuarioGrado10y11(usr['id'], total: 40);
+          final info = await apiService.progresoUsuarioGrado10y11(usr['id'], total: kTotalPreguntas10y11); // ← 40
           usr['progreso'] = info['progreso'] ?? '—';
           usr['ultimaRecomendacion'] = info['ultimaRecomendacion'] ?? '—';
 
@@ -269,7 +275,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             if (tests.isNotEmpty) {
               final det = await apiService.fetchResultadoTest10y11PorId(tests.first['id']);
               usr['ultimaRecomendacion'] = det['resultado'] ?? '—';
-              usr['progreso'] = usr['progreso'] == '—' ? _fmt(tests.first, total: 40) : usr['progreso'];
+              usr['progreso'] = usr['progreso'] == '—' ? _fmt(tests.first, total: kTotalPreguntas10y11) : usr['progreso'];
             }
           }
           return usr;

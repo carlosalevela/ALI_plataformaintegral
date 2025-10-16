@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import TestGrado9
 from django.conf import settings
 
-TOTAL_PREGUNTAS = getattr(settings, "GRADO9_TOTAL_PREGUNTAS", 48)
+TOTAL_PREGUNTAS = getattr(settings, "GRADO9_TOTAL_PREGUNTAS", 57)
 
 class TestGrado9Serializer(serializers.ModelSerializer):
     usuario_email = serializers.ReadOnlyField(source="usuario.email")

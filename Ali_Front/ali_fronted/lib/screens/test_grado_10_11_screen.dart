@@ -14,7 +14,7 @@ class TestGrado1011Screen extends StatefulWidget {
 
 class _TestGrado1011ScreenState extends State<TestGrado1011Screen>
     with TickerProviderStateMixin {
-  // ------------------ LÓGICA (sin cambios) ------------------
+  // ------------------ LÓGICA (misma lista) ------------------
   final List<String> preguntas = [
     '¿Te gustaría aprender cómo funciona el cuerpo humano para ayudar a otros?',
     '¿Disfrutas cuidar a personas enfermas o vulnerables?',
@@ -58,11 +58,11 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen>
     '¿Te atrae el pensamiento crítico y la búsqueda de evidencias?',
   ];
 
+  // 🔁 Escala a 3 opciones (alineada con tu backend: A/B/C o texto)
   final Map<String, String> opciones = const {
-    'A': 'Me gusta',
+    'A': 'Me encanta',
     'B': 'Me interesa',
     'C': 'No me gusta',
-    'D': 'No me interesa',
   };
 
   final Map<String, String> respuestas = {};
@@ -82,7 +82,8 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen>
   Future<void> _cargarProgreso() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      preguntaActual = prefs.getInt('pregunta_actual_1011') ?? 0;
+      preguntaActual = (prefs.getInt('pregunta_actual_1011') ?? 0)
+          .clamp(0, preguntas.length - 1);
       for (int i = 0; i < preguntas.length; i++) {
         final respuesta = prefs.getString('respuesta_$i');
         if (respuesta != null) {
@@ -95,10 +96,11 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen>
   Future<void> _guardarProgreso() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('pregunta_actual_1011', preguntaActual);
-    for (int i = 0; i < respuestas.length; i++) {
-      final respuesta = respuestas['pregunta_$i'];
-      if (respuesta != null) {
-        await prefs.setString('respuesta_$i', respuesta);
+    // ✅ Guardar todas las respuestas por índice real, no por respuestas.length
+    for (int i = 0; i < preguntas.length; i++) {
+      final r = respuestas['pregunta_$i'];
+      if (r != null) {
+        await prefs.setString('respuesta_$i', r);
       }
     }
   }
@@ -129,96 +131,111 @@ class _TestGrado1011ScreenState extends State<TestGrado1011Screen>
       setState(() {
         preguntaActual--;
       });
+      _guardarProgreso();
     }
   }
 
-  // *** Lógica de envío: SE MANTIENE tu versión con API y transformación ***
-      void enviarTest() async {
-  await _borrarProgreso();
+  // *** Lógica de envío (igual a la tuya) ***
+  void enviarTest() async {
+    await _borrarProgreso();
 
-  final respuestasTransformadas = <String, String>{};
-  for (int i = 0; i < respuestas.length; i++) {
-    final original = respuestas['pregunta_$i'];
-    if (original != null) {
-      respuestasTransformadas['pregunta_${i + 1}'] = original;
-    }
-  }
-
-  try {
-    final response = await ApiService().enviarTestGrado10y11(respuestasTransformadas);
-
-    if (response['success'] == true) {
-      final data = response['resultado']; // JSON/Map del backend
-      final carrera = _extraerCarreraSugerida(data); // <-- SOLO la etiqueta (String)
-
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ResultadoTest1011Screen(
-            respuestas: respuestasTransformadas,
-            resultado: carrera, // p. ej. "Agropecuaria"
-          ),
-        ),
-      );
-    } else {
-      throw Exception(response['message'] ?? 'Error desconocido');
-    }
-  } catch (e) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error al enviar test: $e')),
-    );
-  }
-}
-
-// Helper en TestGrado1011Screen (mismo que antes)
-String _extraerCarreraSugerida(dynamic data) {
-  if (data is String) return data.trim();
-  if (data is Map) {
-    for (final k in [
-      'carrera','carrera_sugerida','nombre_carrera','resultado','recomendacion',
-      'recomendación','tecnico','tecnico_sugerido','sugerencia','label','titulo','nombre'
-    ]) {
-      final v = data[k];
-      if (v is String && v.trim().isNotEmpty) return v.trim();
-    }
-    // opcional: búsqueda recursiva si viene muy anidado
-    String? best;
-    void walk(dynamic v) {
-      if (v == null) return;
-      if (v is String) {
-        final t = v.trim();
-        if (t.isNotEmpty && t.length <= 60 && !t.contains('{') && !t.contains('[')) {
-          best ??= t;
-        }
-      } else if (v is Map) {
-        for (final e in v.values) walk(e);
-      } else if (v is List) {
-        for (final e in v) walk(e);
+    final respuestasTransformadas = <String, String>{};
+    for (int i = 0; i < preguntas.length; i++) {
+      final original = respuestas['pregunta_$i'];
+      if (original != null) {
+        respuestasTransformadas['pregunta_${i + 1}'] = original; // A/B/C
       }
     }
-    walk(data);
-    return (best ?? '').trim();
-  }
-  if (data is List) {
-    for (final e in data) {
-      final s = _extraerCarreraSugerida(e);
-      if (s.isNotEmpty) return s;
+
+    try {
+      final response =
+          await ApiService().enviarTestGrado10y11(respuestasTransformadas);
+
+      if (response['success'] == true) {
+        final data = response['resultado']; // JSON/Map del backend
+        final carrera = _extraerCarreraSugerida(data);
+
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ResultadoTest1011Screen(
+              respuestas: respuestasTransformadas,
+              resultado: carrera,
+            ),
+          ),
+        );
+      } else {
+        throw Exception(response['message'] ?? 'Error desconocido');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al enviar test: $e')),
+      );
     }
   }
-  return 'Resultado no disponible';
-}
 
+  // Helper (igual)
+  String _extraerCarreraSugerida(dynamic data) {
+    if (data is String) return data.trim();
+    if (data is Map) {
+      for (final k in [
+        'carrera',
+        'carrera_sugerida',
+        'nombre_carrera',
+        'resultado',
+        'recomendacion',
+        'recomendación',
+        'tecnico',
+        'tecnico_sugerido',
+        'sugerencia',
+        'label',
+        'titulo',
+        'nombre'
+      ]) {
+        final v = data[k];
+        if (v is String && v.trim().isNotEmpty) return v.trim();
+      }
+      String? best;
+      void walk(dynamic v) {
+        if (v == null) return;
+        if (v is String) {
+          final t = v.trim();
+          if (t.isNotEmpty &&
+              t.length <= 60 &&
+              !t.contains('{') &&
+              !t.contains('[')) {
+            best ??= t;
+          }
+        } else if (v is Map) {
+          for (final e in v.values) walk(e);
+        } else if (v is List) {
+          for (final e in v) walk(e);
+        }
+      }
+
+      walk(data);
+      return (best ?? '').trim();
+    }
+    if (data is List) {
+      for (final e in data) {
+        final s = _extraerCarreraSugerida(e);
+        if (s.isNotEmpty) return s;
+      }
+    }
+    return 'Resultado no disponible';
+  }
 
   // ------------------ DISEÑO (UI) ------------------
   @override
   Widget build(BuildContext context) {
     final pregunta = preguntas[preguntaActual];
     final respuestaSeleccionada = respuestas['pregunta_$preguntaActual'] ?? '';
-    final double progreso = respuestas.length / preguntas.length;
+    final double progreso =
+        preguntas.isEmpty ? 0 : (respuestas.length / preguntas.length);
 
-    // Modal de confirmación (sin cambiar tu flujo)
+    // Modal confirmación
     if (mostrarModal) {
       Future.microtask(() {
         setState(() => mostrarModal = false);
@@ -253,9 +270,9 @@ String _extraerCarreraSugerida(dynamic data) {
       body: Stack(
         children: [
           // Fondo animado con íconos académicos
-          Positioned.fill(child: _AnimatedBackground()),
+          const Positioned.fill(child: _AnimatedBackground()),
 
-          // Botón volver (mismo comportamiento)
+          // Botón volver
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -275,7 +292,7 @@ String _extraerCarreraSugerida(dynamic data) {
             ),
           ),
 
-          // Card central con diseño moderno
+          // Card central
           Center(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
@@ -304,7 +321,7 @@ String _extraerCarreraSugerida(dynamic data) {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(20),
                           child: LinearProgressIndicator(
-                            value: progreso,
+                            value: progreso.clamp(0, 1),
                             backgroundColor: Colors.grey[200],
                             valueColor:
                                 AlwaysStoppedAnimation<Color>(azulFondo),
@@ -368,7 +385,7 @@ String _extraerCarreraSugerida(dynamic data) {
                         ),
                         const SizedBox(height: 22),
 
-                        // Opciones
+                        // Opciones (A/B/C)
                         ...opciones.entries.map((opcion) {
                           final estaSeleccionado =
                               respuestaSeleccionada == opcion.key;
