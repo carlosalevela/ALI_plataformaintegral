@@ -8,6 +8,8 @@ on:
 env:
   PYTHON_VERSION: "3.11"
   BACKEND_PATH: "ali_backend"
+  FRONTEND_PATH: "Ali_Front/ali_fronted"
+  SPA_STATIC_SUBDIR: "static/app"
   AZURE_WEBAPP_NAME: "ali"
 
 jobs:
@@ -18,19 +20,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ---------- FRONTEND (Flutter Web) ----------
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'   # usa tu versión si es distinta
+
+      - name: Build Flutter Web
+        working-directory: ${{ env.FRONTEND_PATH }}
+        run: |
+          flutter pub get
+          flutter build web --release
+
+      - name: Move web build into backend static
+        run: |
+          mkdir -p "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}"
+          rm -rf "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}/*" || true
+          rsync -a "${{ env.FRONTEND_PATH }}/build/web/" "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}/"
+          # Ajustar <base href="/"> -> <base href="/static/app/">
+          sed -i 's|<base href="/">|<base href="/static/app/">|' "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}/index.html"
+
+      # ---------- BACKEND ----------
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # ⬇️ INSTALAR DESDE LA RAÍZ (requirements.txt está en la raíz)
+      # ⬇️ INSTALAR DESDE LA RAÍZ (tu archivo se llama "requeriments.txt")
       - name: Create venv & install deps (local check)
         run: |
           python -m venv .venv
           source .venv/bin/activate
           python -m pip install --upgrade pip
           pip install -r requeriments.txt
-          # compilar estáticos si aplica (dentro de ali_backend)
+          # compilar estáticos (ahora con la SPA ya copiada)
           (cd ${{ env.BACKEND_PATH }} && python manage.py collectstatic --noinput) || true
 
       - name: Upload artifact (only backend folder)
@@ -68,4 +91,3 @@ jobs:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           slot-name: "Production"
           package: "."
-
