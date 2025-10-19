@@ -1,34 +1,36 @@
 """
 Django settings for ali_backend project.
+Compatibles con Azure App Service (Linux) y entorno local.
+Django 5.1.x
 """
 
 from pathlib import Path
 from datetime import timedelta
 import os
-from decouple import config
+
+from decouple import config, Csv
 import dj_database_url
 
-# ========= Paths =========
+# =========================
+# Paths
+# =========================
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ========= Core =========
-SECRET_KEY = config('SECRET_KEY', default='dev-secret-please-change')
+# =========================
+# Claves y flags
+# =========================
+SECRET_KEY = config('SECRET_KEY')  # Defínela en Azure / .env
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "testserver",
-    "ali-deabhkdga2beawgc.brazilsouth-01.azurewebsites.net",
-    ".azurewebsites.net",
-]
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=Csv())
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
 
-CSRF_TRUSTED_ORIGINS = [
-    "https://ali-deabhkdga2beawgc.brazilsouth-01.azurewebsites.net",
-    "https://*.azurewebsites.net",
-]
+# Opcional: cabecera para HTTPS detrás de proxy (Azure)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# ========= Apps =========
+# =========================
+# Apps
+# =========================
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -41,18 +43,21 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
+    'corsheaders',
     'django_extensions',
     'django_celery_beat',
-    'corsheaders',
 
-    # Propios
+    # Apps del proyecto
     'Usuario',
     'test_grado9',
     'test_grado_10_11',
 ]
+
 AUTH_USER_MODEL = 'Usuario.Usuario'
 
-# ========= DRF / JWT =========
+# =========================
+# DRF / JWT
+# =========================
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -61,20 +66,25 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
-# ========= Middleware =========
+# =========================
+# CORS
+# =========================
+CORS_ALLOW_ALL_ORIGINS = True  # Si quieres restringir, usa CORS_ALLOWED_ORIGINS desde env.
+
+# =========================
+# Middleware
+# =========================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-
-    # CORS y estáticos deben ir arriba
-    'corsheaders.middleware.CorsMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
-
+    'whitenoise.middleware.WhiteNoiseMiddleware',   # estáticos en Azure
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',        # CORS antes de CommonMiddleware
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -82,8 +92,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True  # en prod ideal: lista explícita
-
+# =========================
+# URLs / WSGI
+# =========================
 ROOT_URLCONF = 'ali_backend.urls'
 
 TEMPLATES = [
@@ -104,41 +115,21 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ali_backend.wsgi.application'
 
-# ========= Database =========
-# 1) Producción por DATABASE_URL (recomendado)
-#    Formato: postgres://USER:PASSWORD@ali-server-f.postgres.database.azure.com:5432/DB?sslmode=require
-db_from_url = dj_database_url.config(
-    env="DATABASE_URL",
-    default=None,
-    conn_max_age=600,
-    ssl_require=True,
-)
+# =========================
+# Base de Datos
+# Prioriza DATABASE_URL; fallback local
+# =========================
+DATABASES = {
+    'default': dj_database_url.config(
+        default=config('DATABASE_URL', default='postgres://postgres:lina123@localhost:5432/bd_ali'),
+        conn_max_age=600,
+        ssl_require=False  # cambia a True o usa ?sslmode=require si tu servidor lo exige
+    )
+}
 
-if db_from_url:
-    DATABASES = {'default': db_from_url}
-else:
-    # 2) Alternativa: variables separadas (útil si no quieres DATABASE_URL)
-    DB_NAME = config('DB_NAME', default='bd_ali')
-    DB_USER = config('DB_USER', default='postgres')  # en Azure suele ser "usuario@ali-server-f"
-    DB_PASSWORD = config('DB_PASSWORD', default='')
-    DB_HOST = config('DB_HOST', default='ali-server-f.postgres.database.azure.com')
-    DB_PORT = config('DB_PORT', default='5432')
-
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': DB_NAME,
-            'USER': DB_USER,
-            'PASSWORD': DB_PASSWORD,
-            'HOST': DB_HOST,
-            'PORT': DB_PORT,
-            'OPTIONS': {
-                'sslmode': 'require',
-            },
-        }
-    }
-
-# ========= Passwords =========
+# =========================
+# Password validators
+# =========================
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -146,43 +137,55 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# ========= I18N / TZ =========
-LANGUAGE_CODE = 'es-co'
-TIME_ZONE = 'America/Bogota'
+# =========================
+# Internationalization
+# =========================
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = config('TIME_ZONE', default='UTC')  # si quieres: 'America/Bogota'
 USE_I18N = True
 USE_TZ = True
 
-# ========= Static / WhiteNoise =========
-STATIC_URL = '/static/'
+# =========================
+# Static files (WhiteNoise)
+# =========================
+STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-WHITENOISE_MAX_AGE = 31536000  # cache largo para assets con hash
 
+# =========================
+# Default PK
+# =========================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ========= Celery =========
-CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379')
+# =========================
+# Celery (desde ENV; no uses localhost en Azure)
+# =========================
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default=None)
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default=None)
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+CELERY_TIMEZONE = config('CELERY_TIMEZONE', default=TIME_ZONE)
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 min
 
-# ========= Email / Reset =========
+# =========================
+# Email / Password reset
+# =========================
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-EMAIL_USE_SSL = False
+EMAIL_USE_SSL = False  # con puerto 587 no se usa SSL
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='aliorientadora@gmail.com')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='ALI Soporte <no-reply@tu-dominio.com>')
 
-SITE_DOMAIN = config('SITE_DOMAIN', default='ali-deabhkdga2beawgc.brazilsouth-01.azurewebsites.net')
+SITE_DOMAIN = config('SITE_DOMAIN', default='localhost:8000')
 FRONTEND_RESET_URL = config('FRONTEND_RESET_URL', default='')
 PASSWORD_RESET_TIMEOUT = config('PASSWORD_RESET_TIMEOUT', default=86400, cast=int)
 FRONTEND_RESET_PATH = "/recuperacion/contrasena-confirmada"
 
-# ========= Proxy/HTTPS (Azure) =========
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-USE_X_FORWARDED_HOST = True
-
-# ========= Extras (opcional) =========
+# =========================
+# Otros (APIs)
+# =========================
 GROQ_API_KEY = config('GROQ_API_KEY', default='')
