@@ -1,8 +1,6 @@
+# ali_backend/__init__.py
 import os
 
-if not os.environ.get('DISABLE_CELERY_IMPORT'):
-    try:
-        from .celery import app as celery_app  # noqa
-    except Exception:
-        # Evita tumbar la web si Celery no está en el contenedor
-        celery_app = None
+# Solo importa Celery si NO está desactivado por env var
+if os.environ.get("DISABLE_CELERY_IMPORT", "0") not in ("1", "true", "True"):
+    from .celery import app as celery_app  # noqa
