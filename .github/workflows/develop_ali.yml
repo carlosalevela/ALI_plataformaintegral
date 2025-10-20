@@ -65,7 +65,7 @@ jobs:
           python -m venv .venv
           source .venv/bin/activate
           python -m pip install --upgrade pip
-          pip install -r requeriments.txt
+          pip install -r requirements.txt
           (cd ${{ env.BACKEND_PATH }} && python manage.py collectstatic --noinput) || true
 
       - name: Upload artifact (only backend folder)
@@ -103,3 +103,4 @@ jobs:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           slot-name: "Production"
           package: "."
+
