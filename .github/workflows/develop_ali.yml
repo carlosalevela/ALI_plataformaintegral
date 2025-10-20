@@ -32,6 +32,13 @@ jobs:
           flutter --version
           dart --version
 
+      # Alinear deps del front para Flutter 3.24.x
+      - name: Align pub deps for CI (intl & font_awesome_flutter)
+        working-directory: ${{ env.FRONTEND_PATH }}
+        run: |
+          flutter pub add intl:0.19.0
+          flutter pub add font_awesome_flutter:10.8.0
+
       - name: Build Flutter Web
         working-directory: ${{ env.FRONTEND_PATH }}
         run: |
@@ -43,7 +50,7 @@ jobs:
           mkdir -p "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}"
           rm -rf "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}/*" || true
           rsync -a "${{ env.FRONTEND_PATH }}/build/web/" "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}/"
-          # Ajustar base href SOLO en el artefacto generado (no toca el repo del front)
+          # Ajustar base href SOLO en el artefacto generado (no toca tu repo)
           sed -i 's|<base href="/">|<base href="/static/app/">|' "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}/index.html"
 
       # ---------- BACKEND ----------
