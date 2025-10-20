@@ -32,13 +32,6 @@ jobs:
           flutter --version
           dart --version
 
-      # Alinear dependencias del front con Flutter 3.24.x
-      - name: Align pub deps for CI (intl & font_awesome_flutter)
-        working-directory: ${{ env.FRONTEND_PATH }}
-        run: |
-          flutter pub add intl:^0.19.0
-          flutter pub add font_awesome_flutter:10.8.0
-
       - name: Build Flutter Web
         working-directory: ${{ env.FRONTEND_PATH }}
         run: |
@@ -50,7 +43,7 @@ jobs:
           mkdir -p "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}"
           rm -rf "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}/*" || true
           rsync -a "${{ env.FRONTEND_PATH }}/build/web/" "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}/"
-          # Ajustar <base href="/"> -> <base href="/static/app/">
+          # Ajustar base href SOLO en el artefacto generado (no toca el repo del front)
           sed -i 's|<base href="/">|<base href="/static/app/">|' "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}/index.html"
 
       # ---------- BACKEND ----------
@@ -59,13 +52,12 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # OJO: respeta tu archivo "requeriments.txt"
       - name: Create venv & install deps (local check)
         run: |
           python -m venv .venv
           source .venv/bin/activate
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r "${{ env.BACKEND_PATH }}/requirements.txt"
           (cd ${{ env.BACKEND_PATH }} && python manage.py collectstatic --noinput) || true
 
       - name: Upload artifact (only backend folder)
@@ -103,4 +95,3 @@ jobs:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           slot-name: "Production"
           package: "."
-
