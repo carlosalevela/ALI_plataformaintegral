@@ -1,9 +1,8 @@
-from __future__ import absolute_import, unicode_literals
+import os
 
-# Evita que el sitio caiga si Celery no está disponible
-try:
-    from .celery import app as celery_app  # noqa: F401
-except Exception:
-    celery_app = None
-
-__all__ = ('celery_app',)
+if not os.environ.get('DISABLE_CELERY_IMPORT'):
+    try:
+        from .celery import app as celery_app  # noqa
+    except Exception:
+        # Evita tumbar la web si Celery no está en el contenedor
+        celery_app = None
