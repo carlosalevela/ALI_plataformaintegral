@@ -45,7 +45,6 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'django_extensions',
-    'django_celery_beat',
 
     # Apps del proyecto
     'Usuario',
@@ -121,7 +120,7 @@ WSGI_APPLICATION = 'ali_backend.wsgi.application'
 # =========================
 DATABASES = {
     'default': dj_database_url.config(
-        default=config('DATABASE_URL', default='postgres://postgres:lina123@localhost:5432/bd_ali'),
+        default=config('DATABASE_URL', default='postgres://postgres:Volcano21!@localhost:5432/psicoorientacion_bd'),
         conn_max_age=600,
         ssl_require=False  # cambia a True o usa ?sslmode=require si tu servidor lo exige
     )
@@ -156,18 +155,6 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # Default PK
 # =========================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# =========================
-# Celery (desde ENV; no uses localhost en Azure)
-# =========================
-CELERY_BROKER_URL = config('CELERY_BROKER_URL', default=None)
-CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default=None)
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_TIMEZONE = config('CELERY_TIMEZONE', default=TIME_ZONE)
-CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 min
-
 # =========================
 # Email / Password reset
 # =========================

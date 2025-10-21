@@ -1,7 +1,6 @@
 amqp==5.3.1
 asgiref==3.8.1
 billiard==4.2.1
-celery==5.5.3
 certifi==2025.7.14
 charset-normalizer==3.4.2
 click==8.2.1
@@ -11,7 +10,6 @@ click-repl==0.3.0
 colorama==0.4.6
 cron-descriptor==1.4.5
 Django==5.1.7
-django-celery-beat==2.8.1
 django-cors-headers==4.7.0
 django-extensions==3.2.3
 django-timezone-field==7.1
