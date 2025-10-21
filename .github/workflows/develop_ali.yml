@@ -101,4 +101,5 @@ jobs:
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           slot-name: "Production"
-          package: "."
+          package: "./ali_backend"
+
