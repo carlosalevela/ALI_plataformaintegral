@@ -1,3 +1,7 @@
 venv/
 .qodo
 .env
+
+__pycache__/
+*.pyc
+
