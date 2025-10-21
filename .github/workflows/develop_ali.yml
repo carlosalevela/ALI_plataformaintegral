@@ -97,9 +97,9 @@ jobs:
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_... }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_... }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_... }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_17F25BAE896C4A5D9BCC9834F71E829C }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_2A1B87C4F6C7474BA449EF8A6D58B4FC }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0B93AA40981D49F480315F802EFE2BBB }}
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
@@ -109,3 +109,4 @@ jobs:
           package: "./ali_backend"
           # 👇 Como tu código queda plano en wwwroot, usa wsgi:application
           startup-command: "gunicorn wsgi:application --bind=0.0.0.0:$PORT --workers=3"
+
