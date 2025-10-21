@@ -32,7 +32,6 @@ jobs:
           flutter --version
           dart --version
 
-      # Alinear deps del front para Flutter 3.24.x
       - name: Align pub deps for CI (intl & font_awesome_flutter)
         working-directory: ${{ env.FRONTEND_PATH }}
         run: |
@@ -50,7 +49,6 @@ jobs:
           mkdir -p "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}"
           rm -rf "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}/*" || true
           rsync -a "${{ env.FRONTEND_PATH }}/build/web/" "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}/"
-          # Ajustar base href SOLO en el artefacto generado (no toca tu repo)
           sed -i 's|<base href="/">|<base href="/static/app/">|' "${{ env.BACKEND_PATH }}/${{ env.SPA_STATIC_SUBDIR }}/index.html"
 
       # ---------- BACKEND ----------
@@ -66,6 +64,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r "${{ env.BACKEND_PATH }}/requirements.txt"
           (cd ${{ env.BACKEND_PATH }} && python manage.py collectstatic --noinput) || true
+
+      # Limpia artefactos que confunden a Oryx si quedaron en el repo
+      - name: Sanitize deploy folder
+        run: |
+          rm -f "${{ env.BACKEND_PATH }}/output.tar.gz" || true
+          rm -f "${{ env.BACKEND_PATH }}/oryx-manifest.toml" || true
+          rm -f "${{ env.BACKEND_PATH }}/hostingstart.html" || true
 
       - name: Upload artifact (only backend folder)
         uses: actions/upload-artifact@v4
@@ -92,9 +97,9 @@ jobs:
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_17F25BAE896C4A5D9BCC9834F71E829C }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_2A1B87C4F6C7474BA449EF8A6D58B4FC }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0B93AA40981D49F480315F802EFE2BBB }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_... }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_... }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_... }}
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
@@ -102,4 +107,5 @@ jobs:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           slot-name: "Production"
           package: "./ali_backend"
-
+          # 👇 Como tu código queda plano en wwwroot, usa wsgi:application
+          startup-command: "gunicorn wsgi:application --bind=0.0.0.0:$PORT --workers=3"
